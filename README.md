@@ -1,2 +1,2 @@
 # UltrasoundProject
-Ultrasound 3rd year project with k-wave
+Ultrasound 3rd year project with k-wave test
