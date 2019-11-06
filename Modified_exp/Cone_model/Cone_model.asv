@@ -34,8 +34,7 @@ end
 
 voxelPlot(medium.sound_speed)
 title('Cone in low res - unmodified')
-%% Trying to find better voxelplot when lower resolution is used
-%                           WORKS!! ?
+%% Trying to find better voxelplot when lower resolution is used - DONE ?
 % Idea have to different ways of reducing the resolution of the cone
 % Join them together so that the loss of information is minimal
 
