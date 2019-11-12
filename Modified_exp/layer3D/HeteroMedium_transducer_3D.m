@@ -107,7 +107,7 @@ kgrid.makeTime(medium.sound_speed, [], t_end);
 % define properties of the input signal
 source_strength = 1e6;          % [Pa]
 tone_burst_freq = 0.5e6;        % [Hz]
-tone_burst_cycles = 5;
+tone_burst_cycles = 1;
 
 % create the input signal using toneBurst 
 input_signal = toneBurst(1/kgrid.dt, tone_burst_freq, tone_burst_cycles);
@@ -121,7 +121,7 @@ input_signal = toneBurst(1/kgrid.dt, tone_burst_freq, tone_burst_cycles);
 % =========================================================================
 
 % physical properties of the transducer
-transducer.number_elements = 72;    % total number of transducer elements
+transducer.number_elements = 24;    % total number of transducer elements
 transducer.element_width = 1;       % width of each element [grid points]
 transducer.element_length = 12;     % length of each element [grid points]
 transducer.element_spacing = 0;     % spacing (kerf width) between the elements [grid points]
@@ -132,7 +132,7 @@ transducer_width = transducer.number_elements * transducer.element_width ...
     + (transducer.number_elements - 1) * transducer.element_spacing;
 
 % use this to position the transducer in the middle of the computational grid
-transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+transducer.position = round([1, Ny/2, Nz/2]);
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = 1540;                  % sound speed [m/s]

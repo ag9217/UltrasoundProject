@@ -1,9 +1,30 @@
 clear all;
 
-% Grid dimensions 
-Nx = 128;
-Ny = 128;
-Nz = 64;
+% % Grid dimensions 
+% Nx = 128;
+% Ny = 128;
+% Nz = 64;
+
+% set the size of the perfectly matched layer (PML)
+PML_X_SIZE = 20;            % [grid points]
+PML_Y_SIZE = 10;            % [grid points]
+PML_Z_SIZE = 10;            % [grid points]
+
+% set total number of grid points not including the PML
+Nx = 128 - 2*PML_X_SIZE;    % [grid points]
+Ny = 128 - 2*PML_Y_SIZE;    % [grid points]
+Nz = 64 - 2*PML_Z_SIZE;     % [grid points]
+
+% set desired grid size in the x-direction not including the PML
+x = 40e-3;                  % [m]
+
+% calculate the spacing between the grid points
+dx = x/Nx;                  % [m]
+dy = dx;                    % [m]
+dz = dx;                    % [m]
+
+% create the k-space grid
+kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 
 % Getting a logic array from the SolidWorks 3D model
 [OUTPUTgrid] = VOXELISE(32,64,64,'Cone_model.stl','xyz');
@@ -56,9 +77,9 @@ for X = 1:length(mat_rs(:,1,1))
             if mat_rs(X,Y,Z) > 0 || Low_res(X,Y,Z) == 1
                 combined(X,Y,Z) = 1;
             end
-            if mat_rs(X,Y,Z) > 0
-                mat_rs(X,Y,Z) = 1;
-            end
+%             if mat_rs(X,Y,Z) > 0
+%                 mat_rs(X,Y,Z) = 1;
+%             end
             
         end
     end
