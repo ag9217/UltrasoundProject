@@ -1,4 +1,7 @@
-%#ok<*UNRCH>
+% NOTE: This code will NOT work on your computer unless you have a CUDA
+% enabled graphics card. If you wish to run the simulation without a CUDA
+% accelerated GPU (I would not recommend it), set DATA_CAST = 'single' and
+% remove the G from kspaceFirstOrder3DG (line 179)
 
 clearvars;
 close all;
