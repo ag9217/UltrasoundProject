@@ -8,7 +8,6 @@ Nz = 64;
 % Getting a logic array from the SolidWorks 3D model
 [OUTPUTgrid] = VOXELISE(32,64,64,'Cone_model.stl','xyz');
 
-
 % Filling the rest of the grid with zeros - has to match Nx,Ny,Nz
 % dimensions
 OUTPUTgrid(31:128,:,:) = 0;
@@ -68,6 +67,7 @@ end
 
 combined(33:128,:,:) = 0;
 combined(:,65:128,:) = 0;
+
 
 medium.density = 1000 * ones(Nx, Ny, Nz);
 for X = 1:length(combined(:,1,1))
