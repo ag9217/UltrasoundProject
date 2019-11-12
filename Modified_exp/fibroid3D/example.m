@@ -121,7 +121,8 @@ Nz_tot = Nz;
 % define a random distribution of scatterers for the medium
 background_map_mean = 1;
 background_map_std = 0.008;
-background_map = background_map_mean + background_map_std * randn([Nx_tot, Ny_tot, Nz_tot]);
+% uniform distribution of medium scattering
+background_map = background_map_mean + background_map_std * ones([Nx_tot, Ny_tot, Nz_tot]);
 
 % define a random distribution of scatterers for the highly scattering
 % region
@@ -134,6 +135,8 @@ scattering_rho0 = scattering_c0 / 1.5;
 % define properties
 sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
+% density map already has density of approxmately water, would adding a "water
+% layer" add that much to the simulation?
 
 % define a sphere for a highly scattering region
 radius = 6e-3;      % [m]
