@@ -1,51 +1,3 @@
-% Simulating B-mode Ultrasound Images Example
-%
-% This example illustrates how k-Wave can be used for the simulation of
-% B-mode ultrasound images (including tissue harmonic imaging) analogous to
-% those produced by a modern diagnostic ultrasound scanner. It builds on
-% the Defining An Ultrasound Transducer, Simulating Ultrasound Beam
-% Patterns, and Using An Ultrasound Transducer As A Sensor examples. 
-%
-% Note, this example generates a B-mode ultrasound image from a 3D
-% scattering phantom using kspaceFirstOrder3D. Compared to ray-tracing or
-% Field II, this approach is very general. In particular, it accounts for
-% nonlinearity, multiple scattering, power law acoustic absorption, and a
-% finite beam width in the elevation direction. However, it is also
-% computationally intensive. Using a modern GPU and the Parallel Computing
-% Toolbox (with 'DataCast' set to 'gpuArray-single'), each scan line takes
-% around 3 minutes to compute. Using a modern desktop CPU (with 'DataCast'
-% set to 'single'), this increases to around 30 minutes. In this example,
-% the final image is constructed using 96 scan lines. This makes the total
-% computational time around 4.5 hours using a single GPU, or 2 days using a
-% CPU. 
-%
-% To allow the simulated scan line data to be processed multiple times with
-% different settings, the simulated RF data is saved to disk. This can be
-% reloaded by setting RUN_SIMULATION = false within the example m-file. The
-% data can also be downloaded from:
-%
-% http://www.k-wave.org/datasets/example_us_bmode_scan_lines.mat
-%
-% author: Bradley Treeby
-% date: 3rd August 2011
-% last update: 9th June 2017
-%  
-% This function is part of the k-Wave Toolbox (http://www.k-wave.org)
-% Copyright (C) 2011-2017 Bradley Treeby
-
-% This file is part of k-Wave. k-Wave is free software: you can
-% redistribute it and/or modify it under the terms of the GNU Lesser
-% General Public License as published by the Free Software Foundation,
-% either version 3 of the License, or (at your option) any later version.
-% 
-% k-Wave is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for
-% more details.
-% 
-% You should have received a copy of the GNU Lesser General Public License
-% along with k-Wave. If not, see <http://www.gnu.org/licenses/>. 
-
 %#ok<*UNRCH>
 
 clearvars;
@@ -183,32 +135,12 @@ density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 % define a sphere for a highly scattering region
 radius = 6e-3;      % [m]
 x_pos = 27.5e-3;    % [m]
-y_pos = 20.5e-3;    % [m]
-% scattering_region1 = makeBall(Nx_tot, Ny_tot, Nz_tot, round(x_pos/dx), round(y_pos/dx), Nz_tot/2, round(radius/dx));
-% 
-% % assign region
-% sound_speed_map(scattering_region1 == 1) = scattering_c0(scattering_region1 == 1);
-% density_map(scattering_region1 == 1) = scattering_rho0(scattering_region1 == 1);
-
-% define a sphere for a highly scattering region
-radius = 5e-3;      % [m]
-x_pos = 60.5e-3;    % [m]
-y_pos = 25e-3;      % [m]
+y_pos = 20.5e-3;      % [m]
 scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, round(x_pos/dx), round(y_pos/dx), Nz_tot/2, round(radius/dx));
 
 % assign region
 sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
 density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
-
-% define a sphere for a highly scattering region
-radius = 4.5e-3;    % [m]
-x_pos = 15.5e-3;    % [m]
-y_pos = 30.5e-3;    % [m]
-% scattering_region3 = makeBall(Nx_tot, Ny_tot, Nz_tot, round(x_pos/dx), round(y_pos/dx), Nz_tot/2, round(radius/dx));
-% 
-% % assign region
-% sound_speed_map(scattering_region3 == 1) = scattering_c0(scattering_region3 == 1);
-% density_map(scattering_region3 == 1) = scattering_rho0(scattering_region3 == 1);
 
 % =========================================================================
 % RUN THE SIMULATION
@@ -264,7 +196,8 @@ if RUN_SIMULATION
 % =========================================================================
 % PROCESS THE RESULTS
 % =========================================================================
-
+% Results are processed as these basic steps are also performed by a modern
+% diagnostic ultrasound scanner
 % -----------------------------
 % Remove Input Signal
 % -----------------------------
@@ -284,7 +217,7 @@ scan_line_example(1, :) = scan_lines(end/2, :);
 % -----------------------------
 % Time Gain Compensation
 % -----------------------------
-
+% Reflections from deeper tissue features will appear weaker 
 % create radius variable assuming that t0 corresponds to the middle of the
 % input signal
 t0 = length(input_signal) * kgrid.dt / 2;
