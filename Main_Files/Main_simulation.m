@@ -1,10 +1,13 @@
-%% Combining transducer and cone
+% Combining transducer, cone, medium layers, and fibroid
 clear all;
 close all;
+
 % Simulation settings
 DATA_CAST = 'single';
 
-% Defining the kgrid
+
+%% DEFINING KGRID
+% Note, that the kgrid dimensions are unusual (x is the shortest axis)
 % PML
 PML_X_SIZE = 10;            % [grid points]
 PML_Y_SIZE = 10;            % [grid points]
@@ -23,6 +26,37 @@ dz = 2e-3;
 % create the k-space grid
 kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 
+
+%% DEFINING MEDIUM
+% Defining 1st medium layer - look up real values
+medium.sound_speed = 1000 * ones(Nx,Ny,Nz);
+medium.density = 1000 * ones (Nx,Ny,Nz);
+
+% Defining 2nd medium layer - look up real values
+medium.sound_speed(Nx/4:end,:,:) = 2000; 
+medium.density(Nx/4:end,:,:) = 2000;
+
+% % Defining 3rd medium layer - look up real values
+% medium.sound_speed(2*Nx/3:end,:,:) = 5000; 
+% medium.density(2*Nx/3:end,:,:) = 5000;
+
+% Extra properties - look up real values
+medium.alpha_coeff = 0.75;      % [dB/(MHz^y cm)]
+medium.alpha_power = 1.5;
+medium.BonA = 6;
+
+
+%% DEFINING FIBROID
+% define a sphere
+radius = Nx/4;      % [m]
+x_pos = Nx/2;       % [m]
+y_pos = Ny/2;       % [m]
+fibroid1 = makeSphere(Nx, Ny, Nz, radius);
+
+medium.sound_speed(fibroid1 == 1) = 5000;
+medium.density(fibroid1 == 1) = 5000;
+
+%% DEFINING CONE
 % Cone dimensions
 R = 220; % Outer diameter [mm]
 t = 50; % Thickness of the cone [mm] - check with Solidworks
@@ -53,22 +87,14 @@ difference = ((total_length_Y - R)/2)/(dx*1000);
 Cone = circshift(Cone, [0 difference difference]);
 
 % Swapping the dimensions of the cone to match kgrid
-%Cone = permute(Cone, [2 3 1]); % second dimension becomes first, third one becomes second and first one becomes third
-
-% Defining medium properties - look up real values
-medium.sound_speed = 1540 * ones(Nx,Ny,Nz);
-medium.density = 1000 * ones (Nx,Ny,Nz);
-
-medium.alpha_coeff = 0.75;      % [dB/(MHz^y cm)]
-medium.alpha_power = 1.5;
-medium.BonA = 6;
+% Cone = permute(Cone, [2 3 1]); % second dimension becomes first, third one becomes second and first one becomes third
 
 % Changing sounds properties according to the model
 for X = 1:length(Cone(:,1,1))  
     for Y = 1:length(Cone(1,:,1))
         for Z = 1:length(Cone(1,1,:))
             if Cone(X,Y,Z) == 1
-                medium.sound_speed(X,Y,Z) = 2000;
+                medium.sound_speed(X,Y,Z) = 5000;
                 medium.density(X,Y,Z) = 5000;
             end
         end
@@ -76,22 +102,25 @@ for X = 1:length(Cone(:,1,1))
 end
 
 
-
-%% Defining Transducer
-
+%% DEFINING INPUT SIGNAL
 % create the time array
 t_end = 40e-6;                  % [s]
 kgrid.makeTime(medium.sound_speed, [], t_end);
 
-
 % define properties of the input signal
 source_strength = 1e6;          % [Pa]
 tone_burst_freq = 0.5e6;        % [Hz]
-tone_burst_cycles = 1;
+tone_burst_cycles = 2;
 
 % create the input signal using toneBurst 
 input_signal = toneBurst(1/kgrid.dt, tone_burst_freq, tone_burst_cycles);
 
+% % scale the source magnitude by the source_strength divided by the
+% % impedance (the source is assigned to the particle velocity)
+% input_signal = (source_strength ./ (1000 * 1000)) .* input_signal;
+
+
+%% DEFINING TRANSDUCER
 % physical properties of the transducer
 transducer.number_elements = 72;    % total number of transducer elements
 transducer.element_width = 1;       % width of each element [grid points]
@@ -132,16 +161,13 @@ transducer = kWaveTransducer(kgrid, transducer);
 transducer.properties;
 
 
-% create voxel plot of transducer mask and cone
-voxelPlot(single(transducer.active_elements_mask | Cone));
-
-%% Sensor mask
+%% SENSOR MASK
 % create a binary sensor mask with four detection positions
 sensor.mask = zeros(Nx, Ny, Nz);
 sensor.mask([Nx/4, Nx/2, 3*Nx/4], Ny/2, Nz/2) = 1;
 
-%% SIMULATION
 
+%% SIMULATION
 input_args = {'DisplayMask', transducer.all_elements_mask | sensor.mask ...
     'PMLInside', false, 'PlotPML', false, 'PMLSize', [PML_X_SIZE, PML_Y_SIZE, PML_Z_SIZE], ...
     'DataCast', DATA_CAST, 'PlotScale', [-1/2, 1/2] * source_strength};
@@ -156,3 +182,10 @@ input_args = {'DisplayMask', transducer.all_elements_mask | sensor.mask ...
 [~, as_1] = spect(sensor_data(1, :), 1/kgrid.dt);
 [~, as_2] = spect(sensor_data(2, :), 1/kgrid.dt);
 [f, as_3] = spect(sensor_data(3, :), 1/kgrid.dt);
+
+
+%% VISUALISATION
+% create voxel plot of transducer mask and cone
+voxelPlot(single(transducer.active_elements_mask | Cone));
+
+% add more stuff
