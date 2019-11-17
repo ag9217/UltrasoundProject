@@ -170,6 +170,7 @@ sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 % density map already has density of approxmately water, would adding a "water
 
+% cone material properties
 % Importing model into the kgrid
 for X = 1:length(Cone(:,1,1))  
     for Y = 1:length(Cone(1,:,1))
@@ -224,163 +225,161 @@ if RUN_SIMULATION
         medium.density = density_map(:, medium_position:medium_position + Ny - 1, :);
         
         % run the simulation
-%         sensor_data = kspaceFirstOrder3DG(kgrid, medium, transducer, transducer, input_args{:});
-% 
-%         % extract the scan line from the sensor data
-%         scan_lines(scan_line_index, :) = transducer.scan_line(sensor_data);
-%         
-%         % update medium position
-%         medium_position = medium_position + transducer.element_width;
-% 
+        sensor_data = kspaceFirstOrder3DG(kgrid, medium, transducer, transducer, input_args{:});
+
+        % extract the scan line from the sensor data
+        scan_lines(scan_line_index, :) = transducer.scan_line(sensor_data);
+        
+        % update medium position
+        medium_position = medium_position + transducer.element_width;
+
       end
-% 
-%     % save the scan lines to disk
-%     save example_us_bmode_scan_lines scan_lines;
-%     
+
+    % save the scan lines to disk
+    save example_us_bmode_scan_lines scan_lines;
+    
   else
-%     
-%     % load the scan lines from disk
-%     load example_us_bmode_scan_lines;
-%     
+    
+    % load the scan lines from disk
+    load example_us_bmode_scan_lines;
+    
   end
-% 
-% % =========================================================================
-% % PROCESS THE RESULTS
-% % =========================================================================
-% % Results are processed as these basic steps are also performed by a modern
-% % diagnostic ultrasound scanner
-% % -----------------------------
-% % Remove Input Signal
-% % -----------------------------
-% 
-% % create a window to set the first part of each scan line to zero to remove
-% % interference from the input signal
-% scan_line_win = getWin(kgrid.Nt * 2, 'Tukey', 'Param', 0.05).';
-% scan_line_win = [zeros(1, length(input_signal) * 2), scan_line_win(1:end/2 - length(input_signal) * 2)];
-% 
-% % apply the window to each of the scan lines
-% scan_lines = bsxfun(@times, scan_line_win, scan_lines);
-% 
-% % store a copy of the middle scan line to illustrate the effects of each
-% % processing step
-% scan_line_example(1, :) = scan_lines(end/2, :);
-% 
-% % -----------------------------
-% % Time Gain Compensation
-% % -----------------------------
-% % Reflections from deeper tissue features will appear weaker 
-% % create radius variable assuming that t0 corresponds to the middle of the
-% % input signal
-% t0 = length(input_signal) * kgrid.dt / 2;
-% r = c0 * ( (1:length(kgrid.t_array)) * kgrid.dt / 2 - t0);    % [m]
-% 
-% % create time gain compensation function based on attenuation value,
-% % transmit frequency, and round trip distance
-% tgc_alpha = 0.4;       % [dB/(MHz cm)]
-% tgc = exp(2 * tgc_alpha * tone_burst_freq * 1e-6 * r * 100);
-% 
-% % apply the time gain compensation to each of the scan lines
-% scan_lines = bsxfun(@times, tgc, scan_lines);
-% 
-% % store a copy of the middle scan line to illustrate the effects of each
-% % processing step
-% scan_line_example(2, :) = scan_lines(end/2, :);
-% 
-% % -----------------------------
-% % Frequency Filtering
-% % -----------------------------
-% 
-% % filter the scan lines using both the transmit frequency and the second
-% % harmonic
-% scan_lines_fund = gaussianFilter(scan_lines, 1/kgrid.dt, tone_burst_freq, 100, true);
-% set(gca, 'XLim', [0, 6]);
-% scan_lines_harm = gaussianFilter(scan_lines, 1/kgrid.dt, 2 * tone_burst_freq, 30, true);
-% set(gca, 'XLim', [0, 6]);
-% 
-% % store a copy of the middle scan line to illustrate the effects of each
-% % processing step
-% scan_line_example(3, :) = scan_lines_fund(end/2, :);
-% 
-% % -----------------------------
-% % Envelope Detection
-% % -----------------------------
-% 
-% % envelope detection
-% scan_lines_fund = envelopeDetection(scan_lines_fund);
-% scan_lines_harm = envelopeDetection(scan_lines_harm);
-% 
-% % store a copy of the middle scan line to illustrate the effects of each
-% % processing step
-% scan_line_example(4, :) = scan_lines_fund(end/2, :);
-% 
-% % -----------------------------
-% % Log Compression
-% % -----------------------------
-% 
-% % normalised log compression
-% compression_ratio = 3;
-% scan_lines_fund = logCompression(scan_lines_fund, compression_ratio, true);
-% scan_lines_harm = logCompression(scan_lines_harm, compression_ratio, true);
-% 
-% % store a copy of the middle scan line to illustrate the effects of each
-% % processing step
-% scan_line_example(5, :) = scan_lines_fund(end/2, :);
-% 
-% % -----------------------------
-% % Scan Conversion
-% % -----------------------------
-% 
-% % upsample the image using linear interpolation
-% scale_factor = 2;
-% scan_lines_fund = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_fund, 1:kgrid.Nt, (1:1/scale_factor:number_scan_lines).');
-% scan_lines_harm = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_harm, 1:kgrid.Nt, (1:1/scale_factor:number_scan_lines).');
-% 
-% % =========================================================================
-% % VISUALISATION
-% % =========================================================================
-% 
-% % plot the medium, truncated to the field of view
-% figure;
-% imagesc((0:number_scan_lines * transducer.element_width - 1) * dy * 1e3, (0:Nx_tot-1) * dx * 1e3, sound_speed_map(:, 1 + Ny/2:end - Ny/2, Nz/2));
-% axis image;
-% colormap(gray);
-% set(gca, 'YLim', [5, 40]);
-% title('Scattering Phantom');
-% xlabel('Horizontal Position [mm]');
-% ylabel('Depth [mm]');
-% 
-% % plot the processing steps
-% figure;
-% stackedPlot(kgrid.t_array * 1e6, {'1. Beamformed Signal', '2. Time Gain Compensation', '3. Frequency Filtering', '4. Envelope Detection', '5. Log Compression'}, scan_line_example);
-% xlabel('Time [\mus]');
-% set(gca, 'XLim', [5, t_end * 1e6]);
-% 
-% % plot the processed b-mode ultrasound image
-% figure;
-% horz_axis = (0:length(scan_lines_fund(:, 1)) - 1) * transducer.element_width * dy / scale_factor * 1e3;
-% imagesc(horz_axis, r * 1e3, scan_lines_fund.');
-% axis image;
-% colormap(gray);
-% set(gca, 'YLim', [5, 40]);
-% title('B-mode Image');
-% xlabel('Horizontal Position [mm]');
-% ylabel('Depth [mm]');
-% 
-% % plot the processed harmonic ultrasound image
-% figure;
-% imagesc(horz_axis, r * 1e3, scan_lines_harm.');
-% axis image;
-% colormap(gray);
-% set(gca, 'YLim', [5, 40]);
-% title('Harmonic Image');
-% xlabel('Horizontal Position [mm]');
-% ylabel('Depth [mm]');
+
+% =========================================================================
+% PROCESS THE RESULTS
+% =========================================================================
+% Results are processed as these basic steps are also performed by a modern
+% diagnostic ultrasound scanner
+% -----------------------------
+% Remove Input Signal
+% -----------------------------
+
+% create a window to set the first part of each scan line to zero to remove
+% interference from the input signal
+scan_line_win = getWin(kgrid.Nt * 2, 'Tukey', 'Param', 0.05).';
+scan_line_win = [zeros(1, length(input_signal) * 2), scan_line_win(1:end/2 - length(input_signal) * 2)];
+
+% apply the window to each of the scan lines
+scan_lines = bsxfun(@times, scan_line_win, scan_lines);
+
+% store a copy of the middle scan line to illustrate the effects of each
+% processing step
+scan_line_example(1, :) = scan_lines(end/2, :);
+
+% -----------------------------
+% Time Gain Compensation
+% -----------------------------
+% Reflections from deeper tissue features will appear weaker 
+% create radius variable assuming that t0 corresponds to the middle of the
+% input signal
+t0 = length(input_signal) * kgrid.dt / 2;
+r = c0 * ( (1:length(kgrid.t_array)) * kgrid.dt / 2 - t0);    % [m]
+
+% create time gain compensation function based on attenuation value,
+% transmit frequency, and round trip distance
+tgc_alpha = 0.4;       % [dB/(MHz cm)]
+tgc = exp(2 * tgc_alpha * tone_burst_freq * 1e-6 * r * 100);
+
+% apply the time gain compensation to each of the scan lines
+scan_lines = bsxfun(@times, tgc, scan_lines);
+
+% store a copy of the middle scan line to illustrate the effects of each
+% processing step
+scan_line_example(2, :) = scan_lines(end/2, :);
+
+% -----------------------------
+% Frequency Filtering
+% -----------------------------
+
+% filter the scan lines using both the transmit frequency and the second
+% harmonic
+scan_lines_fund = gaussianFilter(scan_lines, 1/kgrid.dt, tone_burst_freq, 100, true);
+set(gca, 'XLim', [0, 6]);
+scan_lines_harm = gaussianFilter(scan_lines, 1/kgrid.dt, 2 * tone_burst_freq, 30, true);
+set(gca, 'XLim', [0, 6]);
+
+% store a copy of the middle scan line to illustrate the effects of each
+% processing step
+scan_line_example(3, :) = scan_lines_fund(end/2, :);
+
+% -----------------------------
+% Envelope Detection
+% -----------------------------
+
+% envelope detection
+scan_lines_fund = envelopeDetection(scan_lines_fund);
+scan_lines_harm = envelopeDetection(scan_lines_harm);
+
+% store a copy of the middle scan line to illustrate the effects of each
+% processing step
+scan_line_example(4, :) = scan_lines_fund(end/2, :);
+
+% -----------------------------
+% Log Compression
+% -----------------------------
+
+% normalised log compression
+compression_ratio = 3;
+scan_lines_fund = logCompression(scan_lines_fund, compression_ratio, true);
+scan_lines_harm = logCompression(scan_lines_harm, compression_ratio, true);
+
+% store a copy of the middle scan line to illustrate the effects of each
+% processing step
+scan_line_example(5, :) = scan_lines_fund(end/2, :);
+
+% -----------------------------
+% Scan Conversion
+% -----------------------------
+
+% upsample the image using linear interpolation
+scale_factor = 2;
+scan_lines_fund = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_fund, 1:kgrid.Nt, (1:1/scale_factor:number_scan_lines).');
+scan_lines_harm = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_harm, 1:kgrid.Nt, (1:1/scale_factor:number_scan_lines).');
+
+% =========================================================================
+% VISUALISATION
+% =========================================================================
+
+% plot the medium, truncated to the field of view
+figure;
+imagesc((0:number_scan_lines * transducer.element_width - 1) * dy * 1e3, (0:Nx_tot-1) * dx * 1e3, sound_speed_map(:, 1 + Ny/2:end - Ny/2, Nz/2));
+axis image;
+colormap(gray);
+set(gca, 'YLim', [5, 40]);
+title('Scattering Phantom');
+xlabel('Horizontal Position [mm]');
+ylabel('Depth [mm]');
+
+% plot the processing steps
+figure;
+stackedPlot(kgrid.t_array * 1e6, {'1. Beamformed Signal', '2. Time Gain Compensation', '3. Frequency Filtering', '4. Envelope Detection', '5. Log Compression'}, scan_line_example);
+xlabel('Time [\mus]');
+set(gca, 'XLim', [5, t_end * 1e6]);
+
+% plot the processed b-mode ultrasound image
+figure;
+horz_axis = (0:length(scan_lines_fund(:, 1)) - 1) * transducer.element_width * dy / scale_factor * 1e3;
+imagesc(horz_axis, r * 1e3, scan_lines_fund.');
+axis image;
+colormap(gray);
+set(gca, 'YLim', [5, 40]);
+title('B-mode Image');
+xlabel('Horizontal Position [mm]');
+ylabel('Depth [mm]');
+
+% plot the processed harmonic ultrasound image
+figure;
+imagesc(horz_axis, r * 1e3, scan_lines_harm.');
+axis image;
+colormap(gray);
+set(gca, 'YLim', [5, 40]);
+title('Harmonic Image');
+xlabel('Horizontal Position [mm]');
+ylabel('Depth [mm]');
 
 % =========================================================================
 % VISUALISATION OF SIMULATION LAYOUT
 % =========================================================================
-
-% uncomment to generate a voxel plot of the simulation layout
 
 % physical properties of the transducer
 transducer_plot.number_elements = 32 + number_scan_lines - 1;
