@@ -126,7 +126,7 @@ transducer.transmit_apodization = 'Hanning';
 transducer.receive_apodization = 'Rectangular';
 
 % define the transducer elements that are currently active
-number_active_elements = 16;
+number_active_elements = 12;
 transducer.active_elements = ones(transducer.number_elements, 1);
 
 % append input signal used to drive the transducer
