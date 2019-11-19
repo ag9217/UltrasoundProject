@@ -5,6 +5,7 @@
 
 clearvars;
 close all;
+clc;
 
 % simulation settings
 DATA_CAST       = 'gpuArray-single';     % set to 'single' or 'gpuArray-single' to speed up computations
@@ -20,15 +21,12 @@ pml_y_size = 10;                % [grid points]
 pml_z_size = 10;                % [grid points]
 
 % set total number of grid points not including the PML
-Nx = 256 - 2 * pml_x_size;      % [grid points]
-Ny = 128 - 2 * pml_y_size;      % [grid points]
-Nz = 128 - 2 * pml_z_size;      % [grid points]
-
-% set desired grid size in the x-direction not including the PML
-x = 40e-3;                      % [m]
+Nx = 128;     % [grid points]
+Ny = 128;      % [grid points]
+Nz = 128;      % [grid points]
 
 % calculate the spacing between the grid points
-dx = x / Nx;                    % [m]
+dx = 40e-3 / Nx;                   % [m]
 dy = dx;                        % [m]
 dz = dx;                        % [m]
 
@@ -55,18 +53,17 @@ cone_gridPoints_Y = round(R/(dy*1000));
 cone_gridPoints_Z = round(t/(dz*1000));
 
 % Importing the cone
-[Cone] = VOXELISE(216,300,108,'Cone_model.stl','xyz');
+[Cone] = VOXELISE(cone_gridPoints_Z/8,cone_gridPoints_X/8,cone_gridPoints_Y/8,'Cone_model.stl','xyz');
 Cone = cast(Cone, 'single');
-voxelPlot(Cone)
 % Match cone dimensions with kgrid - cone located at the corner
 % Warning: coordinets can be a bit confusing
 Cone(cone_gridPoints_Z+1:Nx,:,:) = 0;
 Cone(:,cone_gridPoints_X+1:Nz,:) = 0;
 Cone(:,:,cone_gridPoints_Y+1:Ny) = 0;
+Cone = padarray(Cone, [0,(192-88)/2,(128-88)/2], 'both');
+Cone = circshift(Cone, [0 0 -1]);
 voxelPlot(Cone)
 % Shifting the cone to the middle of the grid
-difference = round(((total_length_Y - R)/2)/(dx*1000));
-Cone = circshift(Cone, [0 difference difference]);
 
 % =========================================================================
 % DEFINE THE MEDIUM PARAMETERS
@@ -105,8 +102,8 @@ input_signal = (source_strength ./ (c0 * rho0)) .* input_signal;
 % =========================================================================
 
 % physical properties of the transducer
-transducer.number_elements = 32;  	% total number of transducer elements
-transducer.element_width = 2;       % width of each element [grid points]
+transducer.number_elements = 12;  	% total number of transducer elements
+transducer.element_width = 0.5;       % width of each element [grid points]
 transducer.element_length = 24;  	% length of each element [grid points]
 transducer.element_spacing = 0;  	% spacing (kerf  width) between the elements [grid points]
 transducer.radius = inf;            % radius of curvature of the transducer [m]
@@ -116,7 +113,7 @@ transducer_width = transducer.number_elements * transducer.element_width ...
     + (transducer.number_elements - 1) * transducer.element_spacing;
 
 % use this to position the transducer in the middle of the computational grid
-transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+transducer.position = round([1, Ny/2 + transducer.element_length/2, Nz/2 - transducer.element_length/2]);
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
@@ -129,7 +126,7 @@ transducer.transmit_apodization = 'Hanning';
 transducer.receive_apodization = 'Rectangular';
 
 % define the transducer elements that are currently active
-number_active_elements = 32;
+number_active_elements = 16;
 transducer.active_elements = ones(transducer.number_elements, 1);
 
 % append input signal used to drive the transducer
@@ -146,7 +143,7 @@ transducer.properties;
 % =========================================================================
 
 % define a large image size to move across
-number_scan_lines = 96;
+number_scan_lines = 32;
 Nx_tot = Nx;
 Ny_tot = Ny + number_scan_lines * transducer.element_width;
 Nz_tot = Nz;
@@ -155,7 +152,7 @@ Nz_tot = Nz;
 background_map_mean = 1;
 background_map_std = 0.008;
 % uniform distribution of medium scattering
-background_map = background_map_mean + background_map_std * ones([Nx_tot, Ny_tot, Nz_tot]);
+background_map = background_map_mean + background_map_std * randn([Nx_tot, Ny_tot, Nz_tot]);
 
 % define a random distribution of scatterers for the highly scattering
 % region
@@ -176,19 +173,19 @@ for X = 1:length(Cone(:,1,1))
     for Y = 1:length(Cone(1,:,1))
         for Z = 1:length(Cone(1,1,:))
             if Cone(X,Y,Z) == 1
-                sound_speed_map(X,Y,Z) = 2000;
-                density_map(X,Y,Z) = 5000;
+                sound_speed_map(X,Y,Z) = 5960;
+                density_map(X,Y,Z) = 7700;
             end
         end
     end
 end
-% layer" add that much to the simulation?
 
 % define a sphere for a highly scattering region
 radius = 6e-3;      % [m]
 x_pos = 27.5e-3;    % [m]
 y_pos = 20.5e-3;      % [m]
-scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, round(x_pos/dx), round(y_pos/dx), Nz_tot/2, round(radius/dx));
+%scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, round(x_pos/dx), round(y_pos/dx), Nz_tot/2, round(radius/dx));
+scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot/2, 100, Nz_tot/2, 15);
 
 % assign region
 sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
@@ -233,17 +230,17 @@ if RUN_SIMULATION
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
-      end
+         end
 
     % save the scan lines to disk
     save example_us_bmode_scan_lines scan_lines;
     
-  else
+     else
     
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
     
-  end
+     end
 
 % =========================================================================
 % PROCESS THE RESULTS
@@ -382,22 +379,27 @@ ylabel('Depth [mm]');
 % =========================================================================
 
 % physical properties of the transducer
-transducer_plot.number_elements = 32 + number_scan_lines - 1;
-transducer_plot.element_width = 2;
+transducer_plot.number_elements = 12 + number_scan_lines - 1;
+transducer_plot.element_width = 0.5;
 transducer_plot.element_length = 24;
 transducer_plot.element_spacing = 0;
 transducer_plot.radius = inf;
 
 % transducer position
-transducer_plot.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+% y coord. is random just to get it to centre of cone
+transducer_plot.position = round([1, Ny/2 + transducer.element_length/2, Nz/2 - transducer.element_length/2]);
 
 % create expanded grid
 kgrid_plot = kWaveGrid(Nx_tot, dx, Ny_tot, dy, Nz, dz);
 kgrid_plot.setTime(1, 1);
 
+% create cone same dimensions as scattering_map
+%Cone(1, size(Cone,2):Ny_tot, 1) = 0;
+
 % create the transducer using the defined settings
 transducer_plot = kWaveTransducer(kgrid_plot, transducer_plot);
 hold on;
 % create voxel plot of transducer mask and cone
-voxelPlot(single(transducer_plot.active_elements_mask | scattering_region2 | Cone));
+out = sound_speed_map > 5000;
+voxelPlot(single(transducer_plot.active_elements_mask | scattering_region2 | out));
 view(26, 48);
