@@ -14,8 +14,8 @@ PML_Y_SIZE = 10;            % [grid points]
 PML_Z_SIZE = 20;            % [grid points]
 
 % Absolute grid values
-Nx = 64;    % [grid points]
-Ny = 128;    % [grid points]
+Nx = 64;      % [grid points]
+Ny = 128;     % [grid points]
 Nz = 128;     % [grid points]
 
 % Defining size of each element in the kgrid
@@ -94,8 +94,8 @@ for X = 1:length(Cone(:,1,1))
     for Y = 1:length(Cone(1,:,1))
         for Z = 1:length(Cone(1,1,:))
             if Cone(X,Y,Z) == 1
-                medium.sound_speed(X,Y,Z) = 5000;
-                medium.density(X,Y,Z) = 5000;
+                medium.sound_speed(X,Y,Z) = 6000;
+                medium.density(X,Y,Z) = 7700;
             end
         end
     end
@@ -104,7 +104,7 @@ end
 
 %% DEFINING INPUT SIGNAL
 % create the time array
-t_end = 40e-6;                  % [s]
+t_end = 80e-6;                  % [s]
 kgrid.makeTime(medium.sound_speed, [], t_end);
 
 % define properties of the input signal
@@ -166,11 +166,12 @@ transducer.properties;
 sensor.mask = zeros(Nx, Ny, Nz);
 sensor.mask([Nx/4, Nx/2, 3*Nx/4], Ny/2, Nz/2) = 1;
 
+voxelPlot(single(transducer.active_elements_mask | Cone | fibroid1));
 
 %% SIMULATION
 input_args = {'DisplayMask', transducer.all_elements_mask | sensor.mask ...
     'PMLInside', false, 'PlotPML', false, 'PMLSize', [PML_X_SIZE, PML_Y_SIZE, PML_Z_SIZE], ...
-    'DataCast', DATA_CAST, 'PlotScale', [-1/2, 1/2] * source_strength};
+    'DataCast', DATA_CAST, 'PlotScale', [-1/2, 1/2] * source_strength, 'RecordMovie', true, 'MovieName', 'sim_3D'};
 
 % run the simulation
 [sensor_data] = kspaceFirstOrder3D(kgrid, medium, transducer, sensor, input_args{:});
