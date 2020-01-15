@@ -20,12 +20,12 @@ pml_y_size = 10;                % [grid points]
 pml_z_size = 10;                % [grid points]
 
 % set total number of grid points not including the PML
-Nx = 128;                       % [grid points]
+Nx = 256;                       % [grid points]
 Ny = 128;                       % [grid points]
 Nz = 128;                       % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 40e-3;                      % [m]
+x = 100e-3;                      % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -38,6 +38,12 @@ kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 % =========================================================================
 % CONE DIMENSIONS
 % =========================================================================
+
+x = 40e-3;                      % [m]
+Nx = 128;
+dx = x / Nx;                    % [m]
+dy = dx;                        % [m]
+dz = dx; 
 
 % Cone dimensions
 R = 220; % Outer diameter [mm]
@@ -72,6 +78,12 @@ Cone(2,:,:) = 0;
 % =========================================================================
 % DEFINE THE MEDIUM PARAMETERS
 % =========================================================================
+
+x = 100e-3;                      % [m]
+Nx = 256;
+dx = x / Nx;                    % [m]
+dy = dx;                        % [m]
+dz = dx; 
 
 % define the properties of the propagation medium
 % these properties are very similair to human tissue (fat)
@@ -117,7 +129,7 @@ transducer_width = transducer.number_elements * transducer.element_width ...
     + (transducer.number_elements - 1) * transducer.element_spacing;
 
 % use this to position the transducer in the middle of the computational grid
-transducer.position = round([12, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
@@ -147,7 +159,7 @@ transducer.properties;
 % =========================================================================
 
 % define a large image size to move across
-number_scan_lines = 32;
+number_scan_lines = 2;
 Nx_tot = Nx;
 Ny_tot = Ny + number_scan_lines * transducer.element_width;
 Nz_tot = Nz;
@@ -169,31 +181,36 @@ scattering_rho0 = scattering_c0 / 1.5;
 % define properties
 sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
-% density map already has density of approxmately water, would adding a "water
-% layer" add that much to the simulation?
+
+% defining water layer
+sound_speed_map(1:Nx/2,:,:) = c0 - 40;
+% reapplying randomness to layer
+sound_speed_map(1:Nx/2,:,:) = sound_speed_map(1:Nx/2,:,:) .* background_map(1:Nx/2,:,:);
 
 % define a sphere for a highly scattering region
 radius = 6e-3;      % [m]
 x_pos = 27.5e-3;    % [m]
 y_pos = 20.5e-3;      % [m]
-scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, round(x_pos/dx)+12, 80, Nz_tot/2, round(radius/dx));
+scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot - round(radius/(x/128)), Ny_tot/2, Nz_tot/2, round(radius/(x/128)));
 
-% assign region
-sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
-density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
-
-% cone material properties
+%cone material properties
 % Importing model into the kgrid
 for X = 1:length(Cone(:,1,1))  
     for Y = 1:length(Cone(1,:,1))
         for Z = 1:length(Cone(1,1,:))
             if Cone(X,Y,Z) == 1
-                sound_speed_map(X,Y,Z) = 5960;
+                sound_speed_map(X,Y,Z) = 5800;
                 density_map(X,Y,Z) = 7700;
             end
         end
     end
 end
+
+% assign region
+sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
+density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
+
+%sound_speed_map(1:Nx/2, :,:) = 1480;
 
 % =========================================================================
 % RUN THE SIMULATION
@@ -234,17 +251,17 @@ if RUN_SIMULATION
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
-     end
+       end
 
     % save the scan lines to disk
     save example_us_bmode_scan_lines scan_lines;
     
- else
+   else
     
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
     
- end
+   end
 
 % =========================================================================
 % PROCESS THE RESULTS
@@ -392,7 +409,7 @@ transducer_plot.element_spacing = 0;
 transducer_plot.radius = inf;
 
 % transducer position
-transducer_plot.position = round([12, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+transducer_plot.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
 
 % create expanded grid
 kgrid_plot = kWaveGrid(Nx_tot, dx, Ny_tot, dy, Nz, dz);
