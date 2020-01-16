@@ -191,19 +191,19 @@ sound_speed_map(1:Nx/2,:,:) = sound_speed_map(1:Nx/2,:,:) .* background_map(1:Nx
 sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) = 1624;
 density_map(Nx/2:Nx/2+(1e-3),:,:) = 1050;
 % reapplying randomness to newly defined layer
-sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) = sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) .* background_map(Nx/2:Nx/2+(1e-3),:,:);
+%sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) = sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) .* background_map(Nx/2:Nx/2+(1e-3),:,:);
 
 % defining subcut fat (24mm)
 sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = 1450;
 density_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = 900;
 % reapplying randomness to newly defined layer
-sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) .* background_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:);
+%sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) .* background_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:);
 
 % defining muscle (12mm)
 sound_speed_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) = 1580;
-density_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) = 1100;
+density_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = 1100;
 % reapplying randomness to newly defined layer
-sound_speed_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) = sound_speed_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) .* background_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:);
+%sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) .* background_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:);
 
 % define a sphere for a highly scattering region
 radius = 6e-3;      % [m]
