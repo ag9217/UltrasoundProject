@@ -20,12 +20,12 @@ pml_y_size = 10;                % [grid points]
 pml_z_size = 10;                % [grid points]
 
 % set total number of grid points not including the PML
-Nx = 256;                       % [grid points]
+Nx = 128;                       % [grid points]
 Ny = 128;                       % [grid points]
 Nz = 128;                       % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 100e-3;                      % [m]
+x = 40e-3;                      % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -39,11 +39,11 @@ kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 % CONE DIMENSIONS
 % =========================================================================
 
-x = 40e-3;                      % [m]
-Nx = 128;
-dx = x / Nx;                    % [m]
-dy = dx;                        % [m]
-dz = dx; 
+% x = 40e-3;                      % [m]
+% Nx = 128;
+% dx = x / Nx;                    % [m]
+% dy = dx;                        % [m]
+% dz = dx; 
 
 % Cone dimensions
 R = 220; % Outer diameter [mm]
@@ -79,11 +79,11 @@ Cone(2,:,:) = 0;
 % DEFINE THE MEDIUM PARAMETERS
 % =========================================================================
 
-x = 100e-3;                      % [m]
-Nx = 256;
-dx = x / Nx;                    % [m]
-dy = dx;                        % [m]
-dz = dx; 
+% x = 100e-3;                      % [m]
+% Nx = 256;
+% dx = x / Nx;                    % [m]
+% dy = dx;                        % [m]
+% dz = dx; 
 
 % define the properties of the propagation medium
 % these properties are very similair to human tissue (fat)
@@ -95,7 +95,7 @@ medium.BonA = 6;
 
 % create the time array
 t_end = (Nx * dx) * 2.2 / c0;   % [s]
-kgrid.makeTime(c0, [], t_end);
+kgrid.makeTime(c0, 0.01, t_end);
 
 % =========================================================================
 % DEFINE THE INPUT SIGNAL
@@ -159,7 +159,7 @@ transducer.properties;
 % =========================================================================
 
 % define a large image size to move across
-number_scan_lines = 2;
+number_scan_lines = 32;
 Nx_tot = Nx;
 Ny_tot = Ny + number_scan_lines * transducer.element_width;
 Nz_tot = Nz;
@@ -191,7 +191,7 @@ sound_speed_map(1:Nx/2,:,:) = sound_speed_map(1:Nx/2,:,:) .* background_map(1:Nx
 radius = 6e-3;      % [m]
 x_pos = 27.5e-3;    % [m]
 y_pos = 20.5e-3;      % [m]
-scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot - round(radius/(x/128)), Ny_tot/2, Nz_tot/2, round(radius/(x/128)));
+scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot - round(radius/(x/128)), Ny_tot/2, Nz_tot/2, round(radius/(x/64)));
 
 %cone material properties
 % Importing model into the kgrid
