@@ -12,4 +12,4 @@ Team Members:
 * Noa Appelboom
 
 ## Description
-Use image processing to remove and reconstruct B-mode ultrasound image artefacts
+Use image processing to remove B-mode ultrasound image artefacts and reconstruct the image.
