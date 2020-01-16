@@ -182,9 +182,9 @@ scattering_rho0 = scattering_c0 / 1.5;
 sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
-% defining water layer
-sound_speed_map(1:Nx/2,:,:) = c0 - 40;
-% reapplying randomness to layer
+% ###### defining water layer ######
+sound_speed_map(1:Nx/2,:,:) = 1500;
+% reapplying randomness to newly defined layer
 sound_speed_map(1:Nx/2,:,:) = sound_speed_map(1:Nx/2,:,:) .* background_map(1:Nx/2,:,:);
 
 % define a sphere for a highly scattering region
@@ -247,21 +247,21 @@ if RUN_SIMULATION
 
         % extract the scan line from the sensor data
         scan_lines(scan_line_index, :) = transducer.scan_line(sensor_data);
-        
+          
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
-       end
+        end
 
     % save the scan lines to disk
     save example_us_bmode_scan_lines scan_lines;
     
-   else
+    else
     
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
     
-   end
+    end
 
 % =========================================================================
 % PROCESS THE RESULTS
