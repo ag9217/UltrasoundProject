@@ -182,8 +182,9 @@ scattering_rho0 = scattering_c0 / 1.5;
 sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
-% ###### defining water layer ######
-sound_speed_map(1:Nx/2,:,:) = 1500;
+% ###### defining water layer ###### at 30°C
+sound_speed_map(1:Nx/2,:,:) = 1507;
+density_map(1:Nx/2,:,:) = 995;
 % reapplying randomness to newly defined layer
 sound_speed_map(1:Nx/2,:,:) = sound_speed_map(1:Nx/2,:,:) .* background_map(1:Nx/2,:,:);
 
@@ -211,18 +212,18 @@ x_pos = 27.5e-3;    % [m]
 y_pos = 20.5e-3;      % [m]
 scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot - round(radius/(x/128)), Ny_tot/2, Nz_tot/2, round(radius/(x/64)));
 
-%cone material properties
-% Importing model into the kgrid
-for X = 1:length(Cone(:,1,1))  
-    for Y = 1:length(Cone(1,:,1))
-        for Z = 1:length(Cone(1,1,:))
-            if Cone(X,Y,Z) == 1
-                sound_speed_map(X,Y,Z) = 5800;
-                density_map(X,Y,Z) = 7700;
-            end
-        end
-    end
-end
+% %cone material properties
+% % Importing model into the kgrid
+% for X = 1:length(Cone(:,1,1))  
+%     for Y = 1:length(Cone(1,:,1))
+%         for Z = 1:length(Cone(1,1,:))
+%             if Cone(X,Y,Z) == 1
+%                 sound_speed_map(X,Y,Z) = 5800;
+%                 density_map(X,Y,Z) = 7700;
+%             end
+%         end
+%     end
+% end
 
 % assign region
 sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
@@ -269,17 +270,17 @@ if RUN_SIMULATION
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
-         end
+    end
+       
+% save the scan lines to disk
+save example_us_bmode_scan_lines scan_lines;
 
-    % save the scan lines to disk
-    save example_us_bmode_scan_lines scan_lines;
-    
-     else
-    
+else
+
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
-    
-     end
+
+end
 
 % =========================================================================
 % PROCESS THE RESULTS

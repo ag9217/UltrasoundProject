@@ -212,18 +212,18 @@ x_pos = 27.5e-3;    % [m]
 y_pos = 20.5e-3;      % [m]
 scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot - round(radius/(x/128)), Ny_tot/2, Nz_tot/2, round(radius/(x/64)));
 
-%cone material properties
-% Importing model into the kgrid
-for X = 1:length(Cone(:,1,1))  
-    for Y = 1:length(Cone(1,:,1))
-        for Z = 1:length(Cone(1,1,:))
-            if Cone(X,Y,Z) == 1
-                sound_speed_map(X,Y,Z) = 5800;
-                density_map(X,Y,Z) = 7700;
-            end
-        end
-    end
-end
+% %cone material properties
+% % Importing model into the kgrid
+% for X = 1:length(Cone(:,1,1))  
+%     for Y = 1:length(Cone(1,:,1))
+%         for Z = 1:length(Cone(1,1,:))
+%             if Cone(X,Y,Z) == 1
+%                 sound_speed_map(X,Y,Z) = 5800;
+%                 density_map(X,Y,Z) = 7700;
+%             end
+%         end
+%     end
+% end
 
 % assign region
 sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
