@@ -95,7 +95,7 @@ medium.BonA = 6;
 
 % create the time array
 t_end = (Nx * dx) * 2.2 / c0;   % [s]
-kgrid.makeTime(c0, 0.01, t_end);
+kgrid.makeTime(c0, [], t_end);
 
 % =========================================================================
 % DEFINE THE INPUT SIGNAL
@@ -182,7 +182,7 @@ scattering_rho0 = scattering_c0 / 1.5;
 sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
-% ###### defining water layer ###### at 30°C
+% ###### defining water layer ###### at 30ï¿½C
 sound_speed_map(1:Nx/2,:,:) = 1507;
 density_map(1:Nx/2,:,:) = 995;
 % reapplying randomness to newly defined layer
