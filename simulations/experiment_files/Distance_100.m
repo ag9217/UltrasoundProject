@@ -1,10 +1,54 @@
-% NOTE: This code will NOT work on your computer unless you have a CUDA
-% enabled graphics card. If you wish to run the simulation without a CUDA
-% accelerated GPU (I would not recommend it), set DATA_CAST = 'single' and
-% remove the G from kspaceFirstOrder3DG (line 179)
+% Simulating B-mode Ultrasound Images Example
+%
+% This example illustrates how k-Wave can be used for the simulation of
+% B-mode ultrasound images (including tissue harmonic imaging) analogous to
+% those produced by a modern diagnostic ultrasound scanner. It builds on
+% the Defining An Ultrasound Transducer, Simulating Ultrasound Beam
+% Patterns, and Using An Ultrasound Transducer As A Sensor examples. 
+%
+% Note, this example generates a B-mode ultrasound image from a 3D
+% scattering phantom using kspaceFirstOrder3D. Compared to ray-tracing or
+% Field II, this approach is very general. In particular, it accounts for
+% nonlinearity, multiple scattering, power law acoustic absorption, and a
+% finite beam width in the elevation direction. However, it is also
+% computationally intensive. Using a modern GPU and the Parallel Computing
+% Toolbox (with 'DataCast' set to 'gpuArray-single'), each scan line takes
+% around 3 minutes to compute. Using a modern desktop CPU (with 'DataCast'
+% set to 'single'), this increases to around 30 minutes. In this example,
+% the final image is constructed using 96 scan lines. This makes the total
+% computational time around 4.5 hours using a single GPU, or 2 days using a
+% CPU. 
+%
+% To allow the simulated scan line data to be processed multiple times with
+% different settings, the simulated RF data is saved to disk. This can be
+% reloaded by setting RUN_SIMULATION = false within the example m-file. The
+% data can also be downloaded from:
+%
+% http://www.k-wave.org/datasets/example_us_bmode_scan_lines.mat
+%
+% author: Bradley Treeby
+% date: 3rd August 2011
+% last update: 9th June 2017
+%  
+% This function is part of the k-Wave Toolbox (http://www.k-wave.org)
+% Copyright (C) 2011-2017 Bradley Treeby
+
+% This file is part of k-Wave. k-Wave is free software: you can
+% redistribute it and/or modify it under the terms of the GNU Lesser
+% General Public License as published by the Free Software Foundation,
+% either version 3 of the License, or (at your option) any later version.
+% 
+% k-Wave is distributed in the hope that it will be useful, but WITHOUT ANY
+% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+% FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for
+% more details. 
+% 
+% You should have received a copy of the GNU Lesser General Public License
+% along with k-Wave. If not, see <http://www.gnu.org/licenses/>. 
+
+%#ok<*UNRCH>
 
 clearvars;
-close all;
 
 % simulation settings
 DATA_CAST       = 'single';     % set to 'single' or 'gpuArray-single' to speed up computations
@@ -20,12 +64,12 @@ pml_y_size = 10;                % [grid points]
 pml_z_size = 10;                % [grid points]
 
 % set total number of grid points not including the PML
-Nx = 128;                       % [grid points]
-Ny = 128;                       % [grid points]
-Nz = 128;                       % [grid points]
+Nx = 256 - 2 * pml_x_size;      % [grid points]128
+Ny = 128 - 2 * pml_y_size;      % [grid points]
+Nz = 128 - 2 * pml_z_size;      % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 40e-3;                      % [m]
+x = 100e-3;                     % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -36,57 +80,10 @@ dz = dx;                        % [m]
 kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 
 % =========================================================================
-% CONE DIMENSIONS
-% =========================================================================
-
-% x = 40e-3;                      % [m]
-% Nx = 128;
-% dx = x / Nx;                    % [m]
-% dy = dx;                        % [m]
-% dz = dx; 
-
-% Cone dimensions
-R = 220; % Outer diameter [mm]
-t = 50; % Thickness of the cone [mm] - check with Solidworks
-
-% Calculating total length of the kgrid in mm
-total_length_X = Nx*dx*1000; % [mm]
-total_length_Y = Ny*dy*1000; % [mm]
-total_length_Z = Nz*dz*1000; % [mm]
-
-% Size of the grid that cone is occupying
-
-cone_gridPoints_X = round(R/(dx*1000));
-cone_gridPoints_Y = round(R/(dy*1000));
-cone_gridPoints_Z = round(t/(dz*1000));
-
-% % Importing the cone
-% [Cone] = VOXELISE(cone_gridPoints_Z/8,cone_gridPoints_X/8,cone_gridPoints_Y/8,'Cone_model.stl','xyz');
-% Cone = cast(Cone, 'single');
-% % Match cone dimensions with kgrid - cone located at the corner
-% % Warning: coordinets can be a bit confusing
-% Cone(cone_gridPoints_Z+1:Nx,:,:) = 0;
-% Cone(:,cone_gridPoints_X+1:Nz,:) = 0;
-% Cone(:,:,cone_gridPoints_Y+1:Ny) = 0;
-% Cone = padarray(Cone, [0,(160-88)/2,(128-88)/2], 'both');
-% Cone = circshift(Cone, [0 0 -1]);
-% voxelPlot(Cone)
-% Cone(1,:,:) = 0;
-% Cone(2,:,:) = 0;
-% % Shifting the cone to the middle of the grid
-
-% =========================================================================
 % DEFINE THE MEDIUM PARAMETERS
 % =========================================================================
 
-% x = 100e-3;                      % [m]
-% Nx = 256;
-% dx = x / Nx;                    % [m]
-% dy = dx;                        % [m]
-% dz = dx; 
-
 % define the properties of the propagation medium
-% these properties are very similair to human tissue (fat)
 c0 = 1540;                      % [m/s]
 rho0 = 1000;                    % [kg/m^3]
 medium.alpha_coeff = 0.75;      % [dB/(MHz^y cm)]
@@ -118,8 +115,8 @@ input_signal = (source_strength ./ (c0 * rho0)) .* input_signal;
 % =========================================================================
 
 % physical properties of the transducer
-transducer.number_elements = 8;  	% total number of transducer elements
-transducer.element_width = 0.5;     % width of each element [grid points]
+transducer.number_elements = 32;  	% total number of transducer elements
+transducer.element_width = 2;       % width of each element [grid points]
 transducer.element_length = 24;  	% length of each element [grid points]
 transducer.element_spacing = 0;  	% spacing (kerf  width) between the elements [grid points]
 transducer.radius = inf;            % radius of curvature of the transducer [m]
@@ -133,7 +130,7 @@ transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.ele
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
-transducer.focus_distance = 20e-3;              % focus distance [m]
+transducer.focus_distance = 65e-3;              % focus distance [m]
 transducer.elevation_focus_distance = 19e-3;    % focus distance in the elevation plane [m]
 transducer.steering_angle = 0;                  % steering angle [degrees]
 
@@ -142,7 +139,7 @@ transducer.transmit_apodization = 'Hanning';
 transducer.receive_apodization = 'Rectangular';
 
 % define the transducer elements that are currently active
-number_active_elements = 8;
+number_active_elements = 32;
 transducer.active_elements = ones(transducer.number_elements, 1);
 
 % append input signal used to drive the transducer
@@ -167,7 +164,6 @@ Nz_tot = Nz;
 % define a random distribution of scatterers for the medium
 background_map_mean = 1;
 background_map_std = 0.008;
-% uniform distribution of medium scattering
 background_map = background_map_mean + background_map_std * randn([Nx_tot, Ny_tot, Nz_tot]);
 
 % define a random distribution of scatterers for the highly scattering
@@ -182,54 +178,36 @@ scattering_rho0 = scattering_c0 / 1.5;
 sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
+
 % ###### defining water layer ###### at 20°C
-sound_speed_map(1:Nx/2,:,:) = 1481;
-density_map(1:Nx/2,:,:) = 998;
+water_layer = Nx/2;
+sound_speed_map(1:water_layer,:,:) = 1481;
+density_map(1:water_layer,:,:) = 998;
 % reapplying randomness to newly defined layer
-sound_speed_map(1:Nx/2,:,:) = sound_speed_map(1:Nx/2,:,:) .* background_map(1:Nx/2,:,:);
-
-% defining skin layer (1mm)
-sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) = 1624;
-density_map(Nx/2:Nx/2+(1e-3),:,:) = 1050;
-% reapplying randomness to newly defined layer
-sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) = sound_speed_map(Nx/2:Nx/2+(1e-3),:,:) .* background_map(Nx/2:Nx/2+(1e-3),:,:);
-
-% defining subcut fat (24mm)
-sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = 1450;
-density_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = 900;
-% reapplying randomness to newly defined layer
-sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) = sound_speed_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:) .* background_map(Nx/2+(1e-3):Nx/2+(25e-3),:,:);
-
-% defining muscle (12mm)
-sound_speed_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) = 1580;
-density_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) = 1100;
-% reapplying randomness to newly defined layer
-sound_speed_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) = sound_speed_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:) .* background_map(Nx/2+(25e-3):Nx/2+(37e-3),:,:);
+sound_speed_map(1:water_layer,:,:) = sound_speed_map(1:water_layer,:,:) .* background_map(1:water_layer,:,:);
 
 % define a sphere for a highly scattering region
-radius = 6e-3;      % [m]
-x_pos = 27.5e-3;    % [m]
-y_pos = 20.5e-3;      % [m]
-scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, Nx_tot - round(radius/(x/128)), Ny_tot/2, Nz_tot/2, round(radius/(x/64)));
-
-%cone material properties
-% Importing model into the kgrid
-% for X = 1:length(Cone(:,1,1))  
-%     for Y = 1:length(Cone(1,:,1))
-%         for Z = 1:length(Cone(1,1,:))
-%             if Cone(X,Y,Z) == 1
-%                 sound_speed_map(X,Y,Z) = 5800;
-%                 density_map(X,Y,Z) = 7700;
-%             end
-%         end
-%     end
-% end
+fib_tiss_distance = 10e-3;      % [m]
+radius = 5e-3;                 % [m]
+x_pos = water_layer + round((fib_tiss_distance + radius)/dx);    % [m]
+y_pos = Ny_tot/2;              % [m]
+z_pos = Nz_tot/2;              % [m]
+% water_layer + round((fib_tiss_distance + radius)/dx)
+scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, x_pos, y_pos, z_pos, round(radius/dx));
 
 % assign region
 sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
 density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
 
-%sound_speed_map(1:Nx/2, :,:) = 1480;
+figure;
+imagesc((0:number_scan_lines * transducer.element_width - 1) * dy * 1e3, (0:Nx_tot-1) * dx * 1e3, sound_speed_map(:, 1 + Ny/2:end - Ny/2, Nz/2));
+axis image;
+colormap(gray);
+set(gca, 'YLim', [5, 40]);
+title(' Phantom');
+xlabel('Horizontal Position [mm]');
+ylabel('Depth [mm]');
+
 
 % =========================================================================
 % RUN THE SIMULATION
@@ -266,27 +244,26 @@ if RUN_SIMULATION
 
         % extract the scan line from the sensor data
         scan_lines(scan_line_index, :) = transducer.scan_line(sensor_data);
-          
+        
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
     end
-       
-% save the scan lines to disk
-save example_us_bmode_scan_lines scan_lines;
 
+    % save the scan lines to disk
+    save example_us_bmode_scan_lines scan_lines;
+    
 else
-
+    
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
-
+    
 end
 
 % =========================================================================
 % PROCESS THE RESULTS
 % =========================================================================
-% Results are processed as these basic steps are also performed by a modern
-% diagnostic ultrasound scanner
+
 % -----------------------------
 % Remove Input Signal
 % -----------------------------
@@ -306,7 +283,7 @@ scan_line_example(1, :) = scan_lines(end/2, :);
 % -----------------------------
 % Time Gain Compensation
 % -----------------------------
-% Reflections from deeper tissue features will appear weaker 
+
 % create radius variable assuming that t0 corresponds to the middle of the
 % input signal
 t0 = length(input_signal) * kgrid.dt / 2;
@@ -378,18 +355,10 @@ scan_lines_harm = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_harm, 
 % =========================================================================
 
 % plot the medium, truncated to the field of view
-figure;
-imagesc((0:number_scan_lines * transducer.element_width - 1) * dy * 1e3, (0:Nx_tot-1) * dx * 1e3, sound_speed_map(:, 1 + Ny/2:end - Ny/2, Nz/2));
-axis image;
-colormap(gray);
-set(gca, 'YLim', [5, 40]);
-title('Scattering Phantom');
-xlabel('Horizontal Position [mm]');
-ylabel('Depth [mm]');
-
+% PUT SCATTERING PHANTOM BACK
 % plot the processing steps
 figure;
-%stackedPlot(kgrid.t_array * 1e6, {'1. Beamformed Signal', '2. Time Gain Compensation', '3. Frequency Filtering', '4. Envelope Detection', '5. Log Compression'}, scan_line_example);
+stackedPlot(kgrid.t_array * 1e6, {'1. Beamformed Signal', '2. Time Gain Compensation', '3. Frequency Filtering', '4. Envelope Detection', '5. Log Compression'}, scan_line_example);
 xlabel('Time [\mus]');
 set(gca, 'XLim', [5, t_end * 1e6]);
 
@@ -418,26 +387,25 @@ ylabel('Depth [mm]');
 % VISUALISATION OF SIMULATION LAYOUT
 % =========================================================================
 
-% uncomment to generate a voxel plot of the simulation layout
-
-% physical properties of the transducer
-transducer_plot.number_elements = 8 + number_scan_lines - 1;
-transducer_plot.element_width = 0.5;
-transducer_plot.element_length = 24;
-transducer_plot.element_spacing = 0;
-transducer_plot.radius = inf;
-
-% transducer position
-transducer_plot.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
-
-% create expanded grid
-kgrid_plot = kWaveGrid(Nx_tot, dx, Ny_tot, dy, Nz, dz);
-kgrid_plot.setTime(1, 1);
-
-% create the transducer using the defined settings
-transducer_plot = kWaveTransducer(kgrid_plot, transducer_plot);
-hold on;
-% create voxel plot of transducer mask and
-out = sound_speed_map > 5000;
-voxelPlot(single(transducer_plot.active_elements_mask | scattering_region2 | out));
-view(26, 48);
+% % uncomment to generate a voxel plot of the simulation layout
+% 
+% % physical properties of the transducer
+% transducer_plot.number_elements = 32 + number_scan_lines - 1;
+% transducer_plot.element_width = 2;
+% transducer_plot.element_length = 24;
+% transducer_plot.element_spacing = 0;
+% transducer_plot.radius = inf;
+% 
+% % transducer position
+% transducer_plot.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+% 
+% % create expanded grid
+% kgrid_plot = kWaveGrid(Nx_tot, dx, Ny_tot, dy, Nz, dz);
+% kgrid_plot.setTime(1, 1);
+% 
+% % create the transducer using the defined settings
+% transducer_plot = kWaveTransducer(kgrid_plot, transducer_plot);
+% 
+% % create voxel plot of transducer mask and 
+% voxelPlot(single(transducer_plot.active_elements_mask | scattering_region1 | scattering_region2 | scattering_region3));
+% view(26, 48);
