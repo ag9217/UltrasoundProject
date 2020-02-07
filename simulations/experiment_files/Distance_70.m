@@ -180,7 +180,7 @@ density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
 
 % ###### defining water layer ###### at 20°C
-water_layer = Nx/2;
+water_layer = 30e-3/dx;
 sound_speed_map(1:water_layer,:,:) = 1481;
 density_map(1:water_layer,:,:) = 998;
 % reapplying randomness to newly defined layer
@@ -311,7 +311,7 @@ r = c0 * ( (1:length(kgrid.t_array)) * kgrid.dt / 2 - t0);    % [m]
 
 % create time gain compensation function based on attenuation value,
 % transmit frequency, and round trip distance
-tgc_alpha = 0.3;       % [dB/(MHz cm)]
+tgc_alpha = 0.2;       % [dB/(MHz cm)]
 tgc = exp(2 * tgc_alpha * tone_burst_freq * 1e-6 * r * 100);
 
 % apply the time gain compensation to each of the scan lines
