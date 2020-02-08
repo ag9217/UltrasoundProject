@@ -48,7 +48,9 @@
 
 %#ok<*UNRCH>
 
-clearvars;
+for water_dist = 10e-3:10e-3:50e-3
+    
+clearvars -except water_dist;
 
 % simulation settings
 DATA_CAST       = 'single';     % set to 'single' or 'gpuArray-single' to speed up computations
@@ -64,12 +66,12 @@ pml_y_size = 10;                % [grid points]
 pml_z_size = 10;                % [grid points]
 
 % set total number of grid points not including the PML
-Nx = 256 - 2 * pml_x_size;      % [grid points]128
+Nx = 384 - 2 * pml_x_size;      % [grid points]128
 Ny = 128 - 2 * pml_y_size;      % [grid points]
 Nz = 128 - 2 * pml_z_size;      % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 100e-3;                     % [m]
+x = 150e-3;                     % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -130,7 +132,6 @@ transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.ele
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
-transducer.focus_distance = 65e-3;              % focus distance [m]
 transducer.elevation_focus_distance = 19e-3;    % focus distance in the elevation plane [m]
 transducer.steering_angle = 0;                  % steering angle [degrees]
 
@@ -179,8 +180,8 @@ sound_speed_map = c0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
 
-% ###### defining water layer ###### at 20°C
-water_layer = Nx/2;
+% ###### defining water layer ###### at 20ï¿½C
+water_layer = round(water_dist/dx);
 sound_speed_map(1:water_layer,:,:) = 1481;
 density_map(1:water_layer,:,:) = 998;
 % reapplying randomness to newly defined layer
@@ -219,7 +220,7 @@ scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, x_pos, y_pos, z_pos, radiu
 sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
 density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
 
-figure;
+b = figure;
 imagesc((0:number_scan_lines * transducer.element_width - 1) * dy * 1e3, (0:Nx_tot-1) * dx * 1e3, sound_speed_map(:, 1 + Ny/2:end - Ny/2, Nz/2));
 axis image;
 colormap(gray);
@@ -227,6 +228,11 @@ set(gca, 'YLim', [5, 40]);
 title(' Phantom');
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
+ylim([0 150]);
+saveas(b,['phantom_' num2str(water_dist) '.png']);
+
+% Focus distance is made dependent on fibroid x position
+transducer.focus_distance = x_pos * dx;              % focus distance [m]
 
 
 % =========================================================================
@@ -268,17 +274,17 @@ if RUN_SIMULATION
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
-    end
+     end
 
     % save the scan lines to disk
     save example_us_bmode_scan_lines scan_lines;
     
-else
+ else
     
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
     
-end
+ end
 
 % =========================================================================
 % PROCESS THE RESULTS
@@ -311,7 +317,7 @@ r = c0 * ( (1:length(kgrid.t_array)) * kgrid.dt / 2 - t0);    % [m]
 
 % create time gain compensation function based on attenuation value,
 % transmit frequency, and round trip distance
-tgc_alpha = 0.3;       % [dB/(MHz cm)]
+tgc_alpha = 0.25;       % [dB/(MHz cm)]
 tgc = exp(2 * tgc_alpha * tone_burst_freq * 1e-6 * r * 100);
 
 % apply the time gain compensation to each of the scan lines
@@ -383,7 +389,7 @@ xlabel('Time [\mus]');
 set(gca, 'XLim', [5, t_end * 1e6]);
 
 % plot the processed b-mode ultrasound image
-figure;
+a = figure;
 horz_axis = (0:length(scan_lines_fund(:, 1)) - 1) * transducer.element_width * dy / scale_factor * 1e3;
 imagesc(horz_axis, r * 1e3, scan_lines_fund.');
 axis image;
@@ -392,6 +398,9 @@ set(gca, 'YLim', [5, 40]);
 title('B-mode Image');
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
+ylim([0 150]);
+saveas(a,[num2str(water_dist) '.png']);
+
 
 % plot the processed harmonic ultrasound image
 figure;
@@ -402,6 +411,8 @@ set(gca, 'YLim', [5, 40]);
 title('Harmonic Image');
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
+
+end
 
 % =========================================================================
 % VISUALISATION OF SIMULATION LAYOUT
