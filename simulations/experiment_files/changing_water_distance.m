@@ -51,10 +51,12 @@ close all;
 
 for water_dist = 180e-3:10e-3:280e-3
     
+clearvars -except water_dist
+    
 clear transducer;
 
 % simulation settings
-DATA_CAST       = 'gpuArray-single';     % set to 'single' or 'gpuArray-single' to speed up computations
+DATA_CAST       = 'single';     % set to 'single' or 'gpuArray-single' to speed up computations
 RUN_SIMULATION  = true;         % set to false to reload previous results instead of running simulation
 
 % =========================================================================
@@ -162,7 +164,7 @@ transducer.properties;
 % =========================================================================
 
 % define a large image size to move across
-number_scan_lines = 96;
+number_scan_lines = 2;
 Nx_tot = Nx;
 Ny_tot = Ny + number_scan_lines * transducer.element_width;
 Nz_tot = Nz;
