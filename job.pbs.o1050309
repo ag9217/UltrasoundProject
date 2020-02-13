@@ -1,0 +1,95 @@
+
+                            < M A T L A B (R) >
+                  Copyright 1984-2017 The MathWorks, Inc.
+                   R2017a (9.2.0.538062) 64-bit (glnxa64)
+                             February 23, 2017
+
+ 
+To get started, type one of these: helpwin, helpdesk, or demo.
+For product information, visit www.mathworks.com.
+ 
+ 
+k-Wave Transducer Properties
+  transducer position:       [1  62  52]
+  transducer width:          2.5mm (8 grid points)
+  number of elements:        8
+  number of active elements: 8 (elements 1 to 8)
+  element width:             312.5um (1 grid points)
+  element spacing (kerf):    0m (0 grid points)
+  element pitch:             312.5um (1 grid points)
+  element length:            7.5mm (24 grid points)
+  sound speed:               1540m/s
+  focus distance:            20mm
+  elevation focus distance:  19mm
+  steering angle:            0 degrees
+  steering angle max:        auto degrees
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 194)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 195)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 197)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 197)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 197)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 200)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 201)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 203)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 203)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 203)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 206)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 207)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 209)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 209)
+  In run (line 86)] 
+[Warning: Integer operands are required for colon operator when used as index] 
+[> In Main_simulation_3D (line 209)
+  In run (line 86)] 
+Computing scan line 1 of 32
+Running k-Wave simulation...
+  start time: 10-Feb-2020 21:25:14
+  reference sound speed: 1628.0746m/s
+  prepending transducer.input_signal with 4 leading zeros
+  appending transducer.input_signal with 4 trailing zeros
+  dt: 60.8766ns, t_end: 57.1023us, time steps: 939
+  input grid size: 128 by 128 by 128 grid points (40 by 40 by 40mm)
+  maximum supported frequency: 2.24MHz
+  expanding computational grid...
+  computational grid size: 168 by 148 by 148 grid points
+  WARNING: Highest prime factors in each dimension are 7  37  37
+           Use dimension sizes with lower prime factors to improve speed
+  precomputation completed in 1.5999s
+  saving input files to disk...
+>> 
+============================================
+
+        Job resource usage summary 
+
+                 Memory (GB)    NCPUs
+ Requested  :        96            16
+ Used       :         0 (peak)   0.13 (ave)
+
+============================================

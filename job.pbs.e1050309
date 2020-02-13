@@ -1,0 +1,36 @@
+{Error using hdf5lib2
+Unable to create file with specified filename. Filename may have unsupported
+characters.
+
+Error in H5F.create (line 40)
+file_id = H5ML.hdf5lib2('H5Fcreate', varargin{:});
+
+Error in h5create>create_dataset (line 149)
+    fid = H5F.create(options.Filename,'H5F_ACC_TRUNC','H5P_DEFAULT', ...
+
+Error in h5create (line 68)
+create_dataset(options);
+
+Error in writeMatrix (line 192)
+    h5create(filename,['/' matrix_name], [Nx, Ny, Nz], ...
+
+Error in kspaceFirstOrder_saveToDisk (line 439)
+        writeMatrix(save_to_disk, eval(variable_list{cast_index}),
+        variable_list{cast_index}, hdf_compression_level);
+
+Error in kspaceFirstOrder3D (line 658)
+    kspaceFirstOrder_saveToDisk;
+
+Error in kspaceFirstOrder3DC (line 371)
+eval(run_string);
+
+Error in kspaceFirstOrder3DG (line 64)
+    sensor_data = kspaceFirstOrder3DC(varargin{:}, 'BinaryName', binary_name);
+
+Error in Main_simulation_3D (line 267)
+        sensor_data = kspaceFirstOrder3DG(kgrid, medium, transducer,
+        transducer, input_args{:});
+
+Error in run (line 86)
+evalin('caller', [script ';']);
+} 
