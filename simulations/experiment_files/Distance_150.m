@@ -51,7 +51,7 @@
 clearvars;
 
 % simulation settings
-DATA_CAST       = 'single';     % set to 'single' or 'gpuArray-single' to speed up computations
+DATA_CAST       = 'gpuArray-single';     % set to 'single' or 'gpuArray-single' to speed up computations
 RUN_SIMULATION  = true;         % set to false to reload previous results instead of running simulation
 
 % =========================================================================
@@ -69,7 +69,7 @@ Ny = 128 - 2 * pml_y_size;      % [grid points]
 Nz = 128 - 2 * pml_z_size;      % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 100e-3;                     % [m]
+x = 150e-3;                     % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -130,7 +130,6 @@ transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.ele
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
-transducer.focus_distance = 65e-3;              % focus distance [m]
 transducer.elevation_focus_distance = 19e-3;    % focus distance in the elevation plane [m]
 transducer.steering_angle = 0;                  % steering angle [degrees]
 
@@ -163,7 +162,7 @@ Nz_tot = Nz;
 
 % define a random distribution of scatterers for the medium
 background_map_mean = 1;
-background_map_std = 0.002;
+background_map_std = 0.008;
 background_map = background_map_mean + background_map_std * randn([Nx_tot, Ny_tot, Nz_tot]);
 
 % define a random distribution of scatterers for the highly scattering
@@ -180,7 +179,7 @@ density_map = rho0 * ones(Nx_tot, Ny_tot, Nz_tot) .* background_map;
 
 
 % ###### defining water layer ###### at 20°C
-water_layer = 10e-3/dx;
+water_layer = Nx/2;
 sound_speed_map(1:water_layer,:,:) = 1481;
 density_map(1:water_layer,:,:) = 998;
 % reapplying randomness to newly defined layer
@@ -228,6 +227,7 @@ title(' Phantom');
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
 
+transducer.focus_distance = x_pos*dx;              % focus distance [m]
 
 % =========================================================================
 % RUN THE SIMULATION
@@ -311,7 +311,7 @@ r = c0 * ( (1:length(kgrid.t_array)) * kgrid.dt / 2 - t0);    % [m]
 
 % create time gain compensation function based on attenuation value,
 % transmit frequency, and round trip distance
-tgc_alpha = 0.2;       % [dB/(MHz cm)]
+tgc_alpha = 0.25;       % [dB/(MHz cm)]
 tgc = exp(2 * tgc_alpha * tone_burst_freq * 1e-6 * r * 100);
 
 % apply the time gain compensation to each of the scan lines
