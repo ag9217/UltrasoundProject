@@ -35,7 +35,7 @@
 clearvars;
 
 % simulation settings
-DATA_CAST       = 'single';     % set to 'single' or 'gpuArray-single' to speed up computations
+DATA_CAST       = 'gpuArray-single';     % set to 'single' or 'gpuArray-single' to speed up computations
 RUN_SIMULATION  = true;         % set to false to reload previous results instead of running simulation
 
 % =========================================================================
@@ -50,11 +50,11 @@ pml_z_size = 10;                % [grid points]
 % set total number of grid points not including the PML
 sc = 1;
 Nx = 256/sc - 2*pml_x_size;     % [grid points]
-Ny = 256/sc - 2*pml_y_size;     % [grid points]
+Ny = 128/sc - 2*pml_y_size;     % [grid points]
 Nz = 128/sc - 2*pml_z_size;     % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 50e-3;                      % [m]
+x = 150e-3;                     % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -71,7 +71,7 @@ kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 % define the properties of the propagation medium
 c0 = 1540;                      % [m/s]
 rho0 = 1000;                    % [kg/m^3]
-medium.alpha_coeff = 0.75;      % [dB/(MHz^y cm)]
+medium.alpha_coeff = 0.1;      % [dB/(MHz^y cm)]
 medium.alpha_power = 1.5;
 medium.BonA = 6;
 
@@ -85,7 +85,7 @@ kgrid.makeTime(c0, [], t_end);
 
 % define properties of the input signal
 source_strength = 1e6;          % [Pa]
-tone_burst_freq = 1e6 / sc;     % [Hz]
+tone_burst_freq = 0.5e6 / sc;     % [Hz]
 tone_burst_cycles = 4;
 
 % create the input signal using toneBurst 
@@ -139,6 +139,13 @@ transducer.properties;
 % DEFINE THE MEDIUM PROPERTIES
 % =========================================================================
 
+% range of steering angles to test
+steering_angles = -32:2:32;
+
+% preallocate the storage
+number_scan_lines = length(steering_angles);
+scan_lines = zeros(number_scan_lines, kgrid.Nt);
+
 % define a random distribution of scatterers for the medium
 background_map_mean = 1;
 background_map_std = 0.008;
@@ -156,15 +163,50 @@ scattering_rho0 = scattering_c0 / 1.5;
 sound_speed_map = c0 * ones(Nx, Ny, Nz) .* background_map;
 density_map = rho0 * ones(Nx, Ny, Nz) .* background_map;
 
+% defining water layer 20 degrees C
+water_dist = 10e-3;
+water_layer = round(water_dist/dx);
+sound_speed_map(1:water_layer,:,:) = 1481;
+density_map(1:water_layer,:,:) = 998;
+% reapplying randomness to newly defined layer
+sound_speed_map(1:water_layer,:,:) = sound_speed_map(1:water_layer,:,:) .* background_map(1:water_layer,:,:);
+
+% defining skin layer (1mm)
+skin_layer = 1e-3/dx;
+water_skin = water_layer + skin_layer;
+sound_speed_map(water_layer:water_skin,:,:) = 1624;
+density_map(water_layer:water_skin,:,:) = 1050;
+sound_speed_map(water_layer:water_skin,:,:) = sound_speed_map(water_layer:water_skin,:,:) .* background_map(water_layer:water_skin,:,:);
+
+% defining subcut fat (20mm)
+fat_layer = 20e-3/dx;
+water_skin_fat = water_skin + fat_layer;
+sound_speed_map(water_skin:water_skin_fat,:,:) = 1450;
+density_map(water_skin:water_skin_fat,:,:) = 900;
+sound_speed_map(water_skin:water_skin_fat,:,:) = sound_speed_map(water_skin:water_skin_fat,:,:) .* background_map(water_skin:water_skin_fat,:,:);
+
+% defining muscle (10mm)
+muscle_layer = 10e-3/dx;
+water_skin_fat_musc = water_skin_fat + muscle_layer;
+sound_speed_map(water_skin_fat:water_skin_fat_musc,:,:) = 1580;
+density_map(water_skin_fat:water_skin_fat_musc,:,:) = 1100;
+sound_speed_map(water_skin_fat:water_skin_fat_musc,:,:) = sound_speed_map(water_skin_fat:water_skin_fat_musc,:,:) .* background_map(water_skin_fat:water_skin_fat_musc,:,:);
+
 % define a sphere for a highly scattering region
-radius = 8e-3;
-x_pos = 32e-3;
-y_pos = dy * Ny/2;
-scattering_region1 = makeBall(Nx, Ny, Nz, round(x_pos / dx), round(y_pos / dx), Nz/2, round(radius / dx));
+Nx_tot = Nx;
+Ny_tot = Ny + number_scan_lines * transducer.element_width;
+Nz_tot = Nz;
+
+radius = 5e-3/dx;
+x_pos = water_layer + skin_layer + fat_layer + muscle_layer + radius;
+y_pos = Ny_tot/2;
+z_pos = Nz_tot/2;
+% water_layer + round((fib_tiss_distance + radius)/dx)
+scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, x_pos, y_pos, z_pos, radius);
 
 % assign region
-sound_speed_map(scattering_region1 == 1) = scattering_c0(scattering_region1 == 1);
-density_map(scattering_region1 == 1) = scattering_rho0(scattering_region1 == 1);
+sound_speed_map(scattering_region2 == 1) = scattering_c0(scattering_region2 == 1);
+density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
 
 % assign to the medium inputs
 medium.sound_speed = sound_speed_map;
@@ -173,13 +215,6 @@ medium.density = density_map;
 % =========================================================================
 % RUN THE SIMULATION
 % =========================================================================
-
-% range of steering angles to test
-steering_angles = -32:2:32;
-
-% preallocate the storage
-number_scan_lines = length(steering_angles);
-scan_lines = zeros(number_scan_lines, kgrid.Nt);
 
 % set the input settings
 input_args = {...
@@ -200,7 +235,7 @@ if RUN_SIMULATION
         transducer.steering_angle = steering_angles(angle_index);
         
         % run the simulation
-        sensor_data = kspaceFirstOrder3D(kgrid, medium, transducer, transducer, input_args{:});
+        sensor_data = kspaceFirstOrder3DG(kgrid, medium, transducer, transducer, input_args{:});
 
         % extract the scan line from the sensor data
         scan_lines(angle_index, :) = transducer.scan_line(sensor_data);
