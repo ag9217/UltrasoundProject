@@ -32,7 +32,10 @@
 
 %#ok<*UNRCH>
 
-clearvars;
+clear all;
+
+for water_dist = 10e-3
+clearvars -except water_dist
 
 % simulation settings
 DATA_CAST       = 'gpuArray-single';     % set to 'single' or 'gpuArray-single' to speed up computations
@@ -54,7 +57,7 @@ Ny = 128/sc - 2*pml_y_size;     % [grid points]
 Nz = 128/sc - 2*pml_z_size;     % [grid points]
 
 % set desired grid size in the x-direction not including the PML
-x = 150e-3;                     % [m]
+x = 150e-3;                      % [m]
 
 % calculate the spacing between the grid points
 dx = x / Nx;                    % [m]
@@ -71,13 +74,13 @@ kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 % define the properties of the propagation medium
 c0 = 1540;                      % [m/s]
 rho0 = 1000;                    % [kg/m^3]
-medium.alpha_coeff = 0.1;      % [dB/(MHz^y cm)]
+medium.alpha_coeff = 0.75;      % [dB/(MHz^y cm)]
 medium.alpha_power = 1.5;
 medium.BonA = 6;
 
 % create the time array
 t_end = (Nx * dx) * 2.2 / c0;   % [s]
-kgrid.makeTime(c0, [], t_end);
+kgrid.makeTime(c0, 0.15, t_end);
 
 % =========================================================================
 % DEFINE THE INPUT SIGNAL
@@ -85,7 +88,7 @@ kgrid.makeTime(c0, [], t_end);
 
 % define properties of the input signal
 source_strength = 1e6;          % [Pa]
-tone_burst_freq = 0.5e6 / sc;     % [Hz]
+tone_burst_freq = 1e6 / sc;     % [Hz]
 tone_burst_cycles = 4;
 
 % create the input signal using toneBurst 
@@ -114,7 +117,6 @@ transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.ele
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
-transducer.focus_distance = 30e-3;              % focus distance [m]
 transducer.elevation_focus_distance = 30e-3;    % focus distance in the elevation plane [m]
 transducer.steering_angle = 0;                  % steering angle [degrees]
 transducer.steering_angle_max = 32;             % maximum steering angle [degrees]
@@ -138,13 +140,16 @@ transducer.properties;
 % =========================================================================
 % DEFINE THE MEDIUM PROPERTIES
 % =========================================================================
-
 % range of steering angles to test
 steering_angles = -32:2:32;
 
 % preallocate the storage
 number_scan_lines = length(steering_angles);
 scan_lines = zeros(number_scan_lines, kgrid.Nt);
+
+Nx_tot = Nx;
+Ny_tot = Ny + number_scan_lines * transducer.element_width;
+Nz_tot = Nz;
 
 % define a random distribution of scatterers for the medium
 background_map_mean = 1;
@@ -154,7 +159,7 @@ background_map = background_map_mean + background_map_std * randn([Nx, Ny, Nz]);
 % define a random distribution of scatterers for the highly scattering
 % region
 scattering_map = randn([Nx, Ny, Nz]);
-scattering_c0 = c0 + 25 + 75 * scattering_map;
+scattering_c0 = c0 + 25 + 150 * scattering_map;
 scattering_c0(scattering_c0 > 1600) = 1600;
 scattering_c0(scattering_c0 < 1400) = 1400;
 scattering_rho0 = scattering_c0 / 1.5;
@@ -163,8 +168,7 @@ scattering_rho0 = scattering_c0 / 1.5;
 sound_speed_map = c0 * ones(Nx, Ny, Nz) .* background_map;
 density_map = rho0 * ones(Nx, Ny, Nz) .* background_map;
 
-% defining water layer 20 degrees C
-water_dist = 10e-3;
+% ###### defining water layer ###### at 20�C
 water_layer = round(water_dist/dx);
 sound_speed_map(1:water_layer,:,:) = 1481;
 density_map(1:water_layer,:,:) = 998;
@@ -178,14 +182,14 @@ sound_speed_map(water_layer:water_skin,:,:) = 1624;
 density_map(water_layer:water_skin,:,:) = 1050;
 sound_speed_map(water_layer:water_skin,:,:) = sound_speed_map(water_layer:water_skin,:,:) .* background_map(water_layer:water_skin,:,:);
 
-% defining subcut fat (20mm)
+% defining subcut fat (24mm)
 fat_layer = 20e-3/dx;
 water_skin_fat = water_skin + fat_layer;
 sound_speed_map(water_skin:water_skin_fat,:,:) = 1450;
 density_map(water_skin:water_skin_fat,:,:) = 900;
 sound_speed_map(water_skin:water_skin_fat,:,:) = sound_speed_map(water_skin:water_skin_fat,:,:) .* background_map(water_skin:water_skin_fat,:,:);
 
-% defining muscle (10mm)
+% defining muscle (12mm)
 muscle_layer = 10e-3/dx;
 water_skin_fat_musc = water_skin_fat + muscle_layer;
 sound_speed_map(water_skin_fat:water_skin_fat_musc,:,:) = 1580;
@@ -193,13 +197,9 @@ density_map(water_skin_fat:water_skin_fat_musc,:,:) = 1100;
 sound_speed_map(water_skin_fat:water_skin_fat_musc,:,:) = sound_speed_map(water_skin_fat:water_skin_fat_musc,:,:) .* background_map(water_skin_fat:water_skin_fat_musc,:,:);
 
 % define a sphere for a highly scattering region
-Nx_tot = Nx;
-Ny_tot = Ny + number_scan_lines * transducer.element_width;
-Nz_tot = Nz;
-
-radius = 5e-3/dx;
+radius = 15e-3/dx;
 x_pos = water_layer + skin_layer + fat_layer + muscle_layer + radius;
-y_pos = Ny_tot/2;
+y_pos = 140;
 z_pos = Nz_tot/2;
 % water_layer + round((fib_tiss_distance + radius)/dx)
 scattering_region2 = makeBall(Nx_tot, Ny_tot, Nz_tot, x_pos, y_pos, z_pos, radius);
@@ -211,6 +211,22 @@ density_map(scattering_region2 == 1) = scattering_rho0(scattering_region2 == 1);
 % assign to the medium inputs
 medium.sound_speed = sound_speed_map;
 medium.density = density_map;
+
+% create the axis variables
+x_axis = [0, Nx * dx * 1e3];    % [mm]
+y_axis = [0, Ny * dy * 1e3];    % [mm]
+
+transducer.focus_distance = x_pos;              % focus distance [m]
+
+% plot the medium and the B-mode images
+b = figure;
+imagesc(y_axis, x_axis, medium.sound_speed(:, :, end/2));
+axis image;
+colormap(gray);
+xlabel('Horizontal Position [mm]');
+ylabel('Depth [mm]');
+title('Scattering Phantom');
+saveas(b,['phantom' num2str(water_dist) '.png']);
 
 % =========================================================================
 % RUN THE SIMULATION
@@ -284,7 +300,7 @@ r = c0 * (1:Nt) * kgrid.dt / 2;    % [m]
 
 % create time gain compensation function based on attenuation value,
 % transmit frequency, and round trip distance
-tgc_alpha = 0.4;       % [dB/(MHz cm)]
+tgc_alpha = 0.3;       % [dB/(MHz cm)]
 tgc = exp(2 * tgc_alpha * tone_burst_freq * 1e-6 * r * 100);
 
 % apply the time gain compensation to each of the scan lines
@@ -332,45 +348,18 @@ b_mode_harm = scanConversion(scan_lines_harm, steering_angles, image_size, c0, k
 % VISUALISATION
 % =========================================================================
 
-% create the axis variables
-x_axis = [0, Nx * dx * 1e3];    % [mm]
-y_axis = [0, Ny * dy * 1e3];    % [mm]
-
 % plot the data before and after scan conversion
-figure;
-subplot(1, 3, 1);
-imagesc(steering_angles, x_axis, scan_lines.');
-axis square;
-xlabel('Steering angle [deg]');
-ylabel('Depth [mm]');
-title('Raw Scan-Line Data');
-
-subplot(1, 3, 2);
-imagesc(steering_angles, x_axis, scan_lines_fund.');
-axis square;
-xlabel('Steering angle [deg]');
-ylabel('Depth [mm]');
-title('Processed Scan-Line Data');
-
-subplot(1, 3, 3);
+a = figure;
 imagesc(y_axis, x_axis, b_mode_fund);
 axis square;
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
 title('B-Mode Image');
 colormap(gray);
-
 scaleFig(2, 1);
+saveas(a,[num2str(water_dist) '.png']);
 
-% plot the medium and the B-mode images
 figure;
-subplot(1, 3, 1);
-imagesc(y_axis, x_axis, medium.sound_speed(:, :, end/2));
-axis image;
-xlabel('Horizontal Position [mm]');
-ylabel('Depth [mm]');
-title('Scattering Phantom');
-
 subplot(1, 3, 2);
 imagesc(y_axis, x_axis, b_mode_fund);
 axis image;
@@ -387,3 +376,4 @@ ylabel('Depth [mm]');
 title('Harmonic Image');
 
 scaleFig(2, 1);
+end
