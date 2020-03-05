@@ -38,6 +38,8 @@ for water_dist = [10e-3 30e-3 60e-3 90e-3]
 
 clearvars -except water_dist water_temp;
 
+% Keeping random number generation constant
+rng('default');
 
 % simulation settings
 DATA_CAST       = 'gpuArray-single';     % set to 'single' or 'gpuArray-single' to speed up computations

@@ -33,10 +33,14 @@
 
 %#ok<*UNRCH>
 
-for water_dist = 10e-3 %30e-3 60e-3 90e-3]
-    for water_temp = 20%:10:40
+close all; clc;
+
+for water_dist = [10e-3 30e-3 60e-3 90e-3]
+    for water_temp = 20:10:40
 
 clearvars -except water_dist water_temp;
+% Keeping random number generation constant
+rng('default');
 
 
 % simulation settings
@@ -72,20 +76,20 @@ kgrid = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
 % =========================================================================
 % DEFINE THE CONE PARAMETERS
 % =========================================================================
-% changing dimensions to allow lower resolution cone
-
-% set total number of grid points not including the PML
-Nx = 128;                       % [grid points]
-Ny = 128;                       % [grid points]
-Nz = 128;                       % [grid points]
-
-% set desired grid size in the x-direction not including the PML
-x = 40e-3;                      % [m]
-
-% calculate the spacing between the grid points
-dx = x / Nx;                    % [m]
-dy = dx;                        % [m]
-dz = dx;                        % [m]
+% % changing dimensions to allow lower resolution cone
+% 
+% % set total number of grid points not including the PML
+% Nx = 128;                       % [grid points]
+% Ny = 128;                       % [grid points]
+% Nz = 128;                       % [grid points]
+% 
+% % set desired grid size in the x-direction not including the PML
+% x = 40e-3;                      % [m]
+% 
+% % calculate the spacing between the grid points
+% dx = x / Nx;                    % [m]
+% dy = dx;                        % [m]
+% dz = dx;                        % [m]
 
 % Cone dimensions
 R = 220; % Outer diameter [mm]
@@ -97,41 +101,68 @@ total_length_Y = Ny*dy*1000; % [mm]
 total_length_Z = Nz*dz*1000; % [mm]
 
 % Size of the grid that cone is occupying
-
 cone_gridPoints_X = round(R/(dx*1000));
 cone_gridPoints_Y = round(R/(dy*1000));
 cone_gridPoints_Z = round(t/(dz*1000));
 
-% Importing the cone
-[Cone] = VOXELISE(cone_gridPoints_Z/16,cone_gridPoints_X/16,cone_gridPoints_Y/16,'Cone_model.stl','xyz');
-Cone = cast(Cone, 'single');
+% Importing the low resolution cone
+[Cone_lowRes] = VOXELISE(32,64,64,'Cone_model.stl','xyz');
+
+% Filling the rest of the grid with zeros - has to match Nx,Ny,Nz
+% dimensions
+Cone_lowRes(31:Nx,:,:) = 0;
+Cone_lowRes(:,65:Ny,:) = 0;
+
+% Type casting logic array to a different type
+Cone_lowRes = cast(Cone_lowRes, 'single');
+
+% Importing larger cone and resizing
+[Cone_rs] = cast(VOXELISE(Nz,Ny,Nx,'Cone_model.stl','xyz'),'single');
+Cone_rs = resize(Cone_rs, [32 64 64]);
+
+% Initialize new 3D array that will join information from two different
+% resizing methods
+Cone = cast(zeros(32, 64, 64), 'single');
+
+for X = 1:length(Cone_rs(:,1,1))
+    for Y = 1:length(Cone_rs(1,:,1))
+        for Z = 1:length(Cone_rs(1,1,:))
+            if Cone_rs(X,Y,Z) > 0 || Cone_lowRes(X,Y,Z) == 1
+                Cone(X,Y,Z) = 1;
+            end            
+        end
+    end
+end
+
+Cone = padarray(Cone, [0,Ny/2 ,Nz/4 - 5], 'both');
+Cone(65:Nx,:,:)= 0;
+voxelPlot(Cone)
+
 % Match cone dimensions with kgrid - cone located at the corner
 % Warning: coordinets can be a bit confusing
-Cone(cone_gridPoints_Z+1:Nx,:,:) = 0;
-Cone(:,cone_gridPoints_X+1:Nz,:) = 0;
-Cone(:,:,cone_gridPoints_Y+1:Ny) = 0;
-Cone = padarray(Cone, [0,Ny/4,Nz/4], 'both');
-Cone = circshift(Cone, [0 0 -1]);
-voxelPlot(Cone)
-Cone(1,:,:) = 0;
-Cone(2,:,:) = 0;
+%Cone(cone_gridPoints_Z+1:Nx,:,:) = 0;
+%Cone(:,cone_gridPoints_X+1:Nz,:) = 0;
+%Cone(:,:,cone_gridPoints_Y+1:Ny) = 0;
+%Cone = padarray(Cone, [0,Ny/2,Nz/2], 'both');
+%Cone = circshift(Cone, [0 -4 -6]);
+
 % Shifting the cone to the middle of the grid
-
-% setting dimensions back to as specified above
-
-% set total number of grid points not including the PML
-sc = 1;
-Nx = 384/sc - 2*pml_x_size;     % [grid points]
-Ny = 128/sc - 2*pml_y_size;     % [grid points]
-Nz = 128/sc - 2*pml_z_size;     % [grid points]
-
-% set desired grid size in the x-direction not including the PML
-x = 150e-3;                     % [m]
-
-% calculate the spacing between the grid points
-dx = x / Nx;                    % [m]
-dy = dx;                        % [m]
-dz = dx;                        % [m]
+% 
+% % setting dimensions back to as specified above
+% 
+% % set total number of grid points not including the PML
+% sc = 1;
+% Nx = 384/sc - 2*pml_x_size;     % [grid points]
+% Ny = 128/sc - 2*pml_y_size;     % [grid points]
+% Nz = 128/sc - 2*pml_z_size;     % [grid points]
+% 
+% % set desired grid size in the x-direction not including the PML
+% x = 150e-3;                     % [m]
+% 
+% % calculate the spacing between the grid points
+% dx = x / Nx;                    % [m]
+% dy = dx;                        % [m]
+% dz = dx;                        % [m]
 
 
 % =========================================================================
@@ -170,7 +201,7 @@ input_signal = (source_strength ./ (c0 * rho0)) .* input_signal;
 % =========================================================================
 
 % physical properties of the transducer
-transducer.number_elements = 32;  	% total number of transducer elements
+transducer.number_elements = 16;  	% total number of transducer elements
 transducer.element_width = 2;       % width of each element [grid points]
 transducer.element_length = 24;  	% length of each element [grid points]
 transducer.element_spacing = 0;  	% spacing (kerf  width) between the elements [grid points]
@@ -181,7 +212,7 @@ transducer_width = transducer.number_elements * transducer.element_width ...
     + (transducer.number_elements - 1) * transducer.element_spacing;
 
 % use this to position the transducer in the middle of the computational grid
-transducer.position = round([1, Ny/2 - transducer_width/2, Nz/2 - transducer.element_length/2]);
+transducer.position = round([25, Ny/2 + transducer_width/2, Nz/2 - transducer.element_length/2]);
 
 % properties used to derive the beamforming delays
 transducer.sound_speed = c0;                    % sound speed [m/s]
@@ -314,7 +345,7 @@ title(' Phantom');
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
 ylim([0 150]);
-saveas(b,['phantom_' num2str(water_dist) '_' num2str(water_temp) '.png']);
+saveas(b,['phantom_' num2str(water_dist) '_' num2str(water_temp) '_cone' '.png']);
 
 % Focus distance is made dependent on fibroid x position
 transducer.focus_distance = x_pos * dx;              % focus distance [m]
@@ -359,17 +390,17 @@ if RUN_SIMULATION
         % update medium position
         medium_position = medium_position + transducer.element_width;
 
-     end
+         end
 
     % save the scan lines to disk
     save example_us_bmode_scan_lines scan_lines;
     
- else
+     else
     
     % load the scan lines from disk
     load example_us_bmode_scan_lines;
     
- end
+     end
 
 % =========================================================================
 % PROCESS THE RESULTS
@@ -461,6 +492,34 @@ scale_factor = 2;
 scan_lines_fund = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_fund, 1:kgrid.Nt, (1:1/scale_factor:number_scan_lines).');
 scan_lines_harm = interp2(1:kgrid.Nt, (1:number_scan_lines).', scan_lines_harm, 1:kgrid.Nt, (1:1/scale_factor:number_scan_lines).');
 
+
+% =========================================================================
+% VISUALISATION OF SIMULATION LAYOUT
+% =========================================================================
+
+% uncomment to generate a voxel plot of the simulation layout
+
+% physical properties of the transducer
+transducer_plot.number_elements = 16;
+transducer_plot.element_width = 2;
+transducer_plot.element_length = 24;
+transducer_plot.element_spacing = 0;
+transducer_plot.radius = inf;
+
+% transducer position
+transducer_plot.position = round([25, Ny/2 + transducer_width/2, Nz/2 - transducer.element_length/2]);
+% create expanded grid
+kgrid_plot = kWaveGrid(Nx_tot, dx, Ny_tot, dy, Nz, dz);
+kgrid_plot.setTime(1, 1);
+
+% create the transducer using the defined settings
+transducer_plot = kWaveTransducer(kgrid_plot, transducer_plot);
+
+% create voxel plot of transducer mask and 
+out = sound_speed_map > 5000;
+voxelPlot(single(transducer_plot.active_elements_mask | scattering_region2 | out));
+view(26, 48);
+
 % =========================================================================
 % VISUALISATION
 % =========================================================================
@@ -484,7 +543,7 @@ title('B-mode Image');
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
 ylim([0 150]);
-saveas(a,[num2str(water_dist) '_' num2str(water_temp) '.png']);
+saveas(a,[num2str(water_dist) '_' num2str(water_temp) '_cone' '.png']);
 
 
 % plot the processed harmonic ultrasound image
@@ -498,32 +557,3 @@ xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
     end
 end
-
-% =========================================================================
-% VISUALISATION OF SIMULATION LAYOUT
-% =========================================================================
-
-% physical properties of the transducer
-transducer_plot.number_elements = 16 / sc;       % total number of transducer elements
-transducer_plot.element_width = 1;               % width of each element [grid points]
-transducer_plot.element_length = 20 / sc;        % length of each element [grid points]
-transducer_plot.element_spacing = 0;             % spacing (kerf  width) between the elements [grid points]
-transducer_plot.radius = inf;
-
-% transducer position
-transducer_plot.position = round([7, Ny_tot/2 - transducer_width/2, Nz_tot/2 - transducer.element_length/2]);
-
-% create expanded grid
-kgrid_plot = kWaveGrid(Nx, dx, Ny, dy, Nz, dz);
-kgrid_plot.setTime(1, 1);
-
-% create the transducer using the defined settings
-transducer_plot = kWaveTransducer(kgrid_plot, transducer_plot);
-hold on;
-% create voxel plot of transducer mask and
-out = sound_speed_map > 5000;
-
-c = figure;
-voxelPlot(single(transducer_plot.active_elements_mask | scattering_region2 | out));
-view(26, 48);
-saveas(c,['voxel' '.png']);
